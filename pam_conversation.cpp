@@ -1,4 +1,5 @@
 #include <stdexcept>
+#include <iostream>
 #include <string.h>
 #include <security/pam_appl.h>
 #include "ipam_client.h"
@@ -66,5 +67,48 @@ int pam_conversation(int n,
   }
   *resp = aresp;
   return PAM_SUCCESS;
+}
+
+bool pam_auth_check(const std::string & pam_service,
+                    IPamClient & client,
+                    bool verbose)
+{
+  pam_handle_t *pamh = nullptr;
+  pam_conv conv = { pam_conversation, &client };
+  const int retval_pam_start = pam_start(pam_service.c_str(),
+                                         nullptr,
+                                         &conv,
+                                         &pamh );
+  if(verbose)
+  {
+    std::cout << "pam_start: " << retval_pam_start << std::endl;
+  }
+  if(retval_pam_start != PAM_SUCCESS)
+  {
+    throw std::runtime_error("pam_start_error");
+  }
+  const int retval_pam_authenticate = pam_authenticate( pamh, 0 );
+  if(verbose)
+  {
+    if(retval_pam_authenticate == PAM_SUCCESS)
+    {
+      std::cout << "pam_authenticate: PAM_SUCCESS" << std::endl;
+    }
+    else
+    {
+      std::cout << "pam_authenticate: " << retval_pam_authenticate
+                << ": "
+                << pam_strerror(pamh, retval_pam_authenticate)
+                << std::endl;
+    }
+  }
+  if(pam_end( pamh, retval_pam_authenticate ) != PAM_SUCCESS)
+  {
+    pamh = NULL;
+    throw std::runtime_error("irodsPamAuthCheck: failed to release authenticator");
+  }
+
+  // indicate success (valid username and password) or not
+  return retval_pam_authenticate == PAM_SUCCESS;
 }
 
