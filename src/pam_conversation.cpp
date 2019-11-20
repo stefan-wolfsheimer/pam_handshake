@@ -5,10 +5,10 @@
 #include "ipam_client.h"
 #include "pam_conversation.h"
 
-int pam_conversation(int n,
-                     const struct pam_message **msg,
-                     struct pam_response **resp,
-                     void *data)
+int PamHandshake::pam_conversation(int n,
+                                   const struct pam_message **msg,
+                                   struct pam_response **resp,
+                                   void *data)
 {
   auto pamClient = static_cast<IPamClient*>(data);
   if(!pamClient)
@@ -69,12 +69,12 @@ int pam_conversation(int n,
   return PAM_SUCCESS;
 }
 
-bool pam_auth_check(const std::string & pam_service,
-                    IPamClient & client,
-                    bool verbose)
+bool PamHandshake::pam_auth_check(const std::string & pam_service,
+                                  PamHandshake::IPamClient & client,
+                                  bool verbose)
 {
   pam_handle_t *pamh = nullptr;
-  pam_conv conv = { pam_conversation, &client };
+  pam_conv conv = { PamHandshake::pam_conversation, &client };
   const int retval_pam_start = pam_start(pam_service.c_str(),
                                          nullptr,
                                          &conv,
