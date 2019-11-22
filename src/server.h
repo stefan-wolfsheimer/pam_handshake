@@ -7,6 +7,7 @@
 #include <vector>
 
 struct sockaddr_in;
+struct sockaddr_un;
 
 namespace PamHandshake
 {
@@ -14,15 +15,39 @@ namespace PamHandshake
   class Session;
   class Connection;
 
+  class InetAddr
+  {
+  public:
+    friend class Server;
+    InetAddr(const std::string & _ip = "0.0.0.0",
+             uint16_t _port=8080);
+  private:
+    std::string ip;
+    uint16_t port;
+  };
+
+  class UnixDomainAddr
+  {
+  public:
+    friend class Server;
+    UnixDomainAddr(const std::string & _addr);
+  private:
+    std::string addr;
+  };
+
   class Server
   {
   public:
     friend class Connection;
-    Server(const std::string & _ip = "0.0.0.0",
-           uint16_t _port=8080,
+    Server(const InetAddr & inetaddr,
            std::size_t connection_pool_size=10,
            bool _verbose=false);
+    Server(const UnixDomainAddr & uda,
+           std::size_t connection_pool_size=10,
+           bool _verbose=false);
+    ~Server();
     bool isVerbose() const;
+    bool isUnixDomainSocket() const;
     void run();
     void handle(Connection * conn);
     std::string createSession();
@@ -30,11 +55,13 @@ namespace PamHandshake
              std::shared_ptr<const HttpHeader> header);
     std::string randomString(std::size_t len);
   private:
-    void bind();
+    void init();
     mutable std::mutex mutex;
     std::string ip;
+    std::string socketFile;
     uint16_t port;
     struct ::sockaddr_in * servaddr;
+    struct ::sockaddr_un * sockaddr;
     bool verbose;
     bool running;
     int sockfd;

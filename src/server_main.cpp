@@ -6,10 +6,12 @@
 int main(int argc, const char ** argv)
 {
   uint16_t port = 8080;
-  std::string ipaddr = "0.0.0.0";
+  std::string addr = "0.0.0.0";
   bool printHelp = false;
   bool argError = false;
   bool verbose = false;
+  bool unixSocket = false;
+  bool addrGiven = false;
   for(int i = 0; i < argc; ++i)
   {
     std::string arg(argv[i]);
@@ -34,12 +36,17 @@ int main(int argc, const char ** argv)
         argError = true;
       }
     }
+    if(arg == "--socket" || arg == "-s")
+    {
+      unixSocket = true;
+    }
     if(arg == "--addr" || arg == "-a")
     {
       ++i;
       if(i < argc)
       {
-        ipaddr = argv[i];
+        addr = argv[i];
+        addrGiven = true;
       }
       else
       {
@@ -56,12 +63,18 @@ int main(int argc, const char ** argv)
       verbose = true;
     }
   }
+  if(unixSocket && !addrGiven)
+  {
+    std::cerr << "option --socket requires --addr arguemnt" << std::endl;
+    argError = true;
+  }
   if(printHelp || argError)
   {
     std::cout << argv[0] << "[OPTIONS]" << std::endl;
     std::cout << "OPTIONS:" << std::endl;
     std::cout << "--port|-p PORT" << std::endl;
     std::cout << "--addr|-a IPv4" << std::endl;
+    std::cout << "--socket|-s" << std::endl;
     std::cout << "--verbose|-v" << std::endl;
     std::cout << "--help|-h" << std::endl;
     if(argError)
@@ -75,8 +88,19 @@ int main(int argc, const char ** argv)
   }
   try
   {
-    PamHandshake::Server server(ipaddr, port, 10, verbose);
-    server.run();
+    std::shared_ptr<PamHandshake::Server> server;
+
+    if(unixSocket)
+    {
+      PamHandshake::UnixDomainAddr socketAddr(addr);
+      server = std::make_shared<PamHandshake::Server>(socketAddr, 10, verbose);
+    }
+    else
+    {
+      PamHandshake::InetAddr socketAddr(addr, port);
+      server = std::make_shared<PamHandshake::Server>(socketAddr, 10, verbose);
+    }
+    server->run();
   }
   catch(const std::exception & ex)
   {

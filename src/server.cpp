@@ -9,36 +9,41 @@
 #include <string.h>
 #include <signal.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
 using namespace PamHandshake;
 
-Server::Server(const std::string & _ip,
-                                       uint16_t _port,
-                                       std::size_t connection_pool_size,
-                                       bool _verbose)
-  : ip(_ip),
-    port(_port),
-    verbose(_verbose),
-    running(false),
-    gen(rd()),
-    maxConnections(connection_pool_size)
+InetAddr::InetAddr(const std::string & _ip,
+                   uint16_t _port) : ip(_ip), port(_port)
 {
-  readTimeout.tv_sec = 0;
-  readTimeout.tv_usec = 10000000; // 10 seconds
-  writeTimeout.tv_sec = 0;
-  writeTimeout.tv_usec = 10000000;
+}
 
+UnixDomainAddr::UnixDomainAddr(const std::string & _addr) : addr(_addr)
+{
+}
+
+Server::Server(const InetAddr & inetaddr,
+               std::size_t connection_pool_size,
+               bool _verbose)
+    : ip(inetaddr.ip),
+      port(inetaddr.port),
+      verbose(_verbose),
+      running(false),
+      gen(rd()),
+      maxConnections(connection_pool_size)
+
+{
+  init();
   socklen_t len;
-  servaddr = nullptr;
 
   // socket create and verification 
   sockfd = socket(AF_INET, SOCK_STREAM, 0); 
   if (sockfd == -1)
   {
     throw std::runtime_error("socket creation failed");
-  } 
+  }
   else
   {
     if(verbose)
@@ -62,6 +67,89 @@ Server::Server(const std::string & _ip,
   servaddr->sin_port = htons(port);
   int option = 1;
   setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option));
+  if ((::bind(sockfd, (struct sockaddr*)servaddr, sizeof(sockaddr_in))) != 0)
+  {
+    throw std::runtime_error("socket bind failed");
+  }
+  else
+  {
+    if(verbose)
+    {
+      std::cout << "socket successfully bound" << std::endl;
+    }
+  }
+}
+
+Server::Server(const UnixDomainAddr & uda,
+               std::size_t connection_pool_size,
+               bool _verbose)
+  : socketFile(uda.addr),
+    port(0),
+    verbose(_verbose),
+    running(false),
+    gen(rd()),
+    maxConnections(connection_pool_size)
+{
+  init();
+
+  // socket create and verification
+  sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
+  if (sockfd == -1)
+  {
+    throw std::runtime_error("socket creation failed");
+  }
+  else
+  {
+    if(verbose)
+    {
+      std::cout << "Socket successfully created" << std::endl;
+    }
+  }
+  sockaddr = new sockaddr_un;
+  bzero(sockaddr, sizeof(struct sockaddr_un));
+  sockaddr->sun_family = AF_UNIX;
+  strncpy(sockaddr->sun_path,
+          socketFile.c_str(),
+          sizeof(sockaddr->sun_path)-1);
+  unlink(socketFile.c_str());
+
+  int option = 1;
+  setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option));
+
+  if ((::bind(sockfd, (struct sockaddr*)this->sockaddr, sizeof(sockaddr_un))) != 0)
+  {
+    throw std::runtime_error("socket bind failed");
+  }
+  else
+  {
+    if(verbose)
+    {
+      std::cout << "socket successfully bound" << std::endl;
+    }
+  }
+}
+
+Server::~Server()
+{
+  shutdown(sockfd, 2);
+  if(servaddr)
+  {
+    delete servaddr;
+  }
+  if(sockaddr)
+  {
+    delete sockaddr;
+  }
+}
+
+void Server::init()
+{
+  readTimeout.tv_sec = 0;
+  readTimeout.tv_usec = 10000000; // 10 seconds
+  writeTimeout.tv_sec = 0;
+  writeTimeout.tv_usec = 10000000;
+  servaddr = nullptr;
+  sockaddr = nullptr;
 }
 
 bool Server::isVerbose() const
@@ -69,9 +157,28 @@ bool Server::isVerbose() const
   return verbose;
 }
 
+bool Server::isUnixDomainSocket() const
+{
+  return (sockaddr != nullptr);
+}
+
 void Server::run()
 {
-  bind();
+  // Now server is ready to listen and verification
+  if ((listen(sockfd, 5)) != 0)
+  {
+    throw std::runtime_error("Listen failed");
+  }
+  else
+  {
+    if(verbose)
+    {
+      std::cout << "Server listening" << std::endl;
+    }
+  }
+  // Ignore SIGCHLD to avoid zombie threads
+  signal(SIGCHLD, SIG_IGN);
+
   running = true;
   while(running)
   {
@@ -251,34 +358,3 @@ std::string Server::randomString(std::size_t len)
   }
   return str;
 }
-
-void Server::bind()
-{
-  // Binding newly created socket to given IP and verification 
-  if ((::bind(sockfd, (struct sockaddr*)servaddr, sizeof(sockaddr_in))) != 0)
-  {
-    throw std::runtime_error("socket bind failed");
-  } 
-  else
-  {
-    if(verbose)
-    {
-      std::cout << "socket successfully bound" << std::endl;
-    }
-  }
-  // Now server is ready to listen and verification 
-  if ((listen(sockfd, 5)) != 0)
-  {
-    throw std::runtime_error("Listen failed");
-  } 
-  else
-  {
-    if(verbose)
-    {
-      std::cout << "Server listening" << std::endl;
-    }
-  }
-  // Ignore SIGCHLD to avoid zombie threads
-  signal(SIGCHLD, SIG_IGN);
-}
-
