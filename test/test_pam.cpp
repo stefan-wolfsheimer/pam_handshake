@@ -8,7 +8,7 @@
 #include "ipam_client.h"
 
 
-class PamClientMockup : public IPamClient
+class PamClientMockup : public PamHandshake::IPamClient
 {
 public:
   std::vector<std::pair<int, std::string>> results;
@@ -47,16 +47,16 @@ TEST_CASE("pam_conversation", "[PAM]")
   const struct pam_message* msg[] = { &msg0, &msg1, &msg2, &msg3, &msg4 };
   struct pam_response *resp = nullptr;
   int n = sizeof(msg) / sizeof(void*);
-  REQUIRE(pam_conversation(n,
-                           (const struct pam_message**) &msg,
-                           &resp,
-                           nullptr) == PAM_CONV_ERR);
+  REQUIRE(PamHandshake::pam_conversation(n,
+                                         (const struct pam_message**) &msg,
+                                         &resp,
+                                         nullptr) == PAM_CONV_ERR);
   REQUIRE_FALSE(resp);
   PamClientMockup client;
-  REQUIRE(pam_conversation(n,
-                           (const struct pam_message**) &msg,
-                           &resp,
-                           &client) == PAM_SUCCESS);
+  REQUIRE(PamHandshake::pam_conversation(n,
+                                         (const struct pam_message**) &msg,
+                                         &resp,
+                                         &client) == PAM_SUCCESS);
   REQUIRE(client.results == std::vector<std::pair<int, std::string>>{
       { PAM_PROMPT_ECHO_OFF, "msg0" },
       { PAM_PROMPT_ECHO_ON,  "msg1" },
