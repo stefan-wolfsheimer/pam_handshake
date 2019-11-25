@@ -41,9 +41,13 @@ namespace PamHandshake
     friend class Connection;
     Server(const InetAddr & inetaddr,
            std::size_t connection_pool_size=10,
+           std::size_t connection_timeout=10000, // milliseconds
+           std::size_t session_timeout=3600, // seconds
            bool _verbose=false);
     Server(const UnixDomainAddr & uda,
            std::size_t connection_pool_size=10,
+           std::size_t connection_timeout=10000, // milliseconds
+           std::size_t session_timeout=3600, // seconds
            bool _verbose=false);
     ~Server();
     bool isVerbose() const;
@@ -51,11 +55,16 @@ namespace PamHandshake
     void run();
     void handle(Connection * conn);
     std::string createSession();
+    void put(Connection * conn,
+             std::shared_ptr<const HttpHeader> header);
     void get(Connection * conn,
              std::shared_ptr<const HttpHeader> header);
+    void deleteSession(Connection * conn,
+                       std::shared_ptr<const HttpHeader> header);
     std::string randomString(std::size_t len);
   private:
     void init();
+    void housekeeping();
     mutable std::mutex mutex;
     std::string ip;
     std::string socketFile;
@@ -73,9 +82,12 @@ namespace PamHandshake
 
     std::map<std::size_t, std::thread> connections;
     std::size_t maxConnections;
+    std::size_t connectionTimeout;
+    std::size_t sessionTimeout;
 
     std::map<std::string, std::shared_ptr<Session>> sessions;
     std::vector<std::thread> threads;
+    std::shared_ptr<std::thread> housekeeper;
   };
 
 }

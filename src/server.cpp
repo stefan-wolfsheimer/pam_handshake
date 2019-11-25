@@ -26,14 +26,17 @@ UnixDomainAddr::UnixDomainAddr(const std::string & _addr) : addr(_addr)
 
 Server::Server(const InetAddr & inetaddr,
                std::size_t connection_pool_size,
+               std::size_t connection_timeout,
+               std::size_t session_timeout,
                bool _verbose)
     : ip(inetaddr.ip),
       port(inetaddr.port),
       verbose(_verbose),
       running(false),
       gen(rd()),
-      maxConnections(connection_pool_size)
-
+      maxConnections(connection_pool_size),
+      connectionTimeout(connection_timeout),
+      sessionTimeout(session_timeout)
 {
   init();
   socklen_t len;
@@ -82,13 +85,17 @@ Server::Server(const InetAddr & inetaddr,
 
 Server::Server(const UnixDomainAddr & uda,
                std::size_t connection_pool_size,
+               std::size_t connection_timeout,
+               std::size_t session_timeout,
                bool _verbose)
   : socketFile(uda.addr),
     port(0),
     verbose(_verbose),
     running(false),
     gen(rd()),
-    maxConnections(connection_pool_size)
+    maxConnections(connection_pool_size),
+    connectionTimeout(connection_timeout),
+    sessionTimeout(session_timeout)
 {
   init();
 
@@ -144,12 +151,48 @@ Server::~Server()
 
 void Server::init()
 {
+  //sessionTimeout(session_timeout)
   readTimeout.tv_sec = 0;
-  readTimeout.tv_usec = 10000000; // 10 seconds
+  readTimeout.tv_usec = connectionTimeout * 1000;
   writeTimeout.tv_sec = 0;
-  writeTimeout.tv_usec = 10000000;
+  writeTimeout.tv_usec = connectionTimeout * 1000;
   servaddr = nullptr;
   sockaddr = nullptr;
+  housekeeper = std::make_shared<std::thread>(std::bind(&Server::housekeeping, this));
+}
+
+void Server::housekeeping()
+{
+  while(true)
+  {
+    std::this_thread::sleep_for(std::chrono::seconds(10));
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+      if(verbose)
+      {
+        std::cout << "housekeeping " << std::endl;
+      }
+      auto itr = sessions.begin();
+      while(itr != sessions.end())
+      {
+        auto next = itr;
+        next++;
+        if(std::difftime(std::time(nullptr), itr->second->getLastTime()) > sessionTimeout)
+        {
+          if(itr->second->getState() == Session::State::Error ||
+             itr->second->getState() == Session::State::Timeout)
+          {
+            // remove
+          }
+          else
+          {
+            itr->second->cancel();
+          }
+        }
+        itr = next;
+      }
+    }
+  }
 }
 
 bool Server::isVerbose() const
@@ -253,9 +296,17 @@ void Server::handle(Connection * conn)
                 token.c_str());
         conn->write(buff);
       }
+      else if(header->method == "PUT")
+      {
+        put(conn, header);
+      }
       else if(header->method == "GET")
       {
         get(conn, header);
+      }
+      else if(header->method == "DELETE")
+      {
+        deleteSession(conn, header);
       }
       else
       {
@@ -308,8 +359,8 @@ std::string Server::createSession()
   return token;
 }
 
-void Server::get(Connection * conn,
-                             std::shared_ptr<const HttpHeader> header)
+void Server::put(Connection * conn,
+                 std::shared_ptr<const HttpHeader> header)
 {
   std::string token = std::string(header->uri.begin() + 1,
                                   header->uri.end());
@@ -328,7 +379,7 @@ void Server::get(Connection * conn,
       {
         http_code = 202;
       }
-      std::string msg(HttpHeader::response(200));
+      std::string msg(HttpHeader::response(http_code));
       msg.append(Session::StateToString(p.first));
       msg.append("\r\n");
       msg.append(p.second);
@@ -336,7 +387,68 @@ void Server::get(Connection * conn,
     }
     else
     {
-      conn->write(HttpHeader::response(404));
+      std::string msg(HttpHeader::response(404));
+      msg.append("NOT FOUND ");
+      msg += token;
+      msg.append("\r\n");
+      conn->write(msg.c_str());
+    }
+  }
+}
+
+void Server::get(Connection * conn,
+                 std::shared_ptr<const HttpHeader> header)
+{
+  std::string token = std::string(header->uri.begin() + 1,
+                                  header->uri.end());
+  {
+    std::lock_guard<std::mutex> lock(mutex);
+    auto itr = sessions.find(token);
+
+    if(itr != sessions.end())
+    {
+      std::string msg(HttpHeader::response(200));
+      itr->second->refresh();
+      msg.append(Session::StateToString(itr->second->getState()));
+      msg.append("\r\n");
+      conn->write(msg.c_str());
+    }
+    else
+    {
+      std::string msg(HttpHeader::response(404));
+      msg.append("NOT FOUND ");
+      msg += token;
+      msg.append("\r\n");
+      conn->write(msg.c_str());
+    }
+  }
+}
+
+void Server::deleteSession(Connection * conn,
+                           std::shared_ptr<const HttpHeader> header)
+{
+  std::string token = std::string(header->uri.begin() + 1,
+                                  header->uri.end());
+  {
+    std::lock_guard<std::mutex> lock(mutex);
+    auto itr = sessions.find(token);
+    if(itr != sessions.end())
+    {
+      itr->second->cancel();
+      itr->second->refresh();
+      std::string msg(HttpHeader::response(200));
+      msg.append("DELETED ");
+      msg += token;
+      msg.append("\r\n");
+      conn->write(msg.c_str());
+    }
+    else
+    {
+      std::string msg(HttpHeader::response(404));
+      msg.append("NOT FOUND ");
+      msg += token;
+      msg.append("\r\n");
+      conn->write(msg.c_str());
     }
   }
 }

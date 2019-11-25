@@ -11,7 +11,7 @@ int PamHandshake::pam_conversation(int n,
                                    void *data)
 {
   auto pamClient = static_cast<IPamClient*>(data);
-  if(!pamClient)
+  if(!pamClient || pamClient->canceled())
   {
     return PAM_CONV_ERR;
   }
@@ -66,6 +66,10 @@ int PamHandshake::pam_conversation(int n,
     return PAM_CONV_ERR;
   }
   *resp = aresp;
+  if(pamClient->canceled())
+  {
+    return PAM_CONV_ERR;
+  }
   return PAM_SUCCESS;
 }
 
