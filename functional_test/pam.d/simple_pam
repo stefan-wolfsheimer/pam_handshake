@@ -1,0 +1,3 @@
+# auth required pam_exec.so debug stdout /usr/bin/echo test
+auth required pam_exec.so debug stdout /bin/echo test
+auth sufficient pam_allow.so
