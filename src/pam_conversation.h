@@ -1,4 +1,5 @@
 #pragma once
+#include <string>
 #include <security/pam_appl.h>
 #include "ipam_client.h"
 

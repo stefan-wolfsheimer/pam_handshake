@@ -35,26 +35,69 @@ namespace PamHandshake
     std::string addr;
   };
 
+  /**
+   * Server that is listening on port or unix domain socket.
+   */
   class Server
   {
   public:
     friend class Connection;
+
+    /**
+     * Construct server listening on port
+     *
+     * \param inetaddr
+     * \param pam_stack_name       name of the PAM stack in /etc/pam.d
+     * \param connection_pool_size numnber of simultanious connections
+     * \param connection_timeout   connection timeout (in milliseconds)
+     * \param session_timeout      lifetime on interactive PAM conversation session
+     * \param verbose              verbose server log
+     *
+     */
     Server(const InetAddr & inetaddr,
+           const std::string & pam_stack_name,
            std::size_t connection_pool_size=10,
            std::size_t connection_timeout=10000, // milliseconds
            std::size_t session_timeout=3600, // seconds
            bool _verbose=false);
+
+    /**
+     * Construct server listening on unix domain socket
+     *
+     */
     Server(const UnixDomainAddr & uda,
+           const std::string & pam_stack_name,
            std::size_t connection_pool_size=10,
            std::size_t connection_timeout=10000, // milliseconds
            std::size_t session_timeout=3600, // seconds
            bool _verbose=false);
     ~Server();
+
+    /**
+     * \param return true if server is in verbose mode
+     */
     bool isVerbose() const;
+
+    /**
+     * \param return true if server runs on unix domain socket
+     */
     bool isUnixDomainSocket() const;
+
+    /**
+     * \return name of the PAM stack in /etc/pam.d
+     */
+    const std::string getPamStackName() const;
+
+    /**
+     * Start the server
+     */
     void run();
     void handle(Connection * conn);
     std::string createSession();
+
+    /**
+     * Give answer to active PAM conversation
+     */
     void put(Connection * conn,
              std::shared_ptr<const HttpHeader> header);
     void get(Connection * conn,
@@ -66,6 +109,7 @@ namespace PamHandshake
     void init();
     void housekeeping();
     mutable std::mutex mutex;
+    std::string pam_stack_name;
     std::string ip;
     std::string socketFile;
     uint16_t port;

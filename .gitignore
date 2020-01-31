@@ -3,3 +3,4 @@
 *.a
 server
 runtest
+auth_check

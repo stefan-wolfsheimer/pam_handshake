@@ -25,11 +25,13 @@ UnixDomainAddr::UnixDomainAddr(const std::string & _addr) : addr(_addr)
 }
 
 Server::Server(const InetAddr & inetaddr,
+               const std::string & _pam_stack_name,
                std::size_t connection_pool_size,
                std::size_t connection_timeout,
                std::size_t session_timeout,
                bool _verbose)
-    : ip(inetaddr.ip),
+    : pam_stack_name(_pam_stack_name),
+      ip(inetaddr.ip),
       port(inetaddr.port),
       verbose(_verbose),
       running(false),
@@ -84,11 +86,13 @@ Server::Server(const InetAddr & inetaddr,
 }
 
 Server::Server(const UnixDomainAddr & uda,
+               const std::string & _pam_stack_name,
                std::size_t connection_pool_size,
                std::size_t connection_timeout,
                std::size_t session_timeout,
                bool _verbose)
-  : socketFile(uda.addr),
+  : pam_stack_name(_pam_stack_name),
+    socketFile(uda.addr),
     port(0),
     verbose(_verbose),
     running(false),
@@ -159,6 +163,10 @@ void Server::init()
   servaddr = nullptr;
   sockaddr = nullptr;
   housekeeper = std::make_shared<std::thread>(std::bind(&Server::housekeeping, this));
+  if(verbose)
+  {
+    std::cout << "Server started using PAM stack /etc/pam.d/" << pam_stack_name << std::endl;
+  }
 }
 
 void Server::housekeeping()
@@ -203,6 +211,11 @@ bool Server::isVerbose() const
 bool Server::isUnixDomainSocket() const
 {
   return (sockaddr != nullptr);
+}
+
+const std::string Server::getPamStackName() const
+{
+  return pam_stack_name;
 }
 
 void Server::run()

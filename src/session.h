@@ -9,6 +9,9 @@ namespace PamHandshake
 {
   class Server;
 
+  /**
+   * PAM conversation session
+   */
   class Session : public IPamClient
   {
   public:

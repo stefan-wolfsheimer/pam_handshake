@@ -229,7 +229,7 @@ std::pair<Session::State, std::string> Session::pull(const char * answer, std::s
 void Session::worker()
 {
   bool verbose = false; //todo inheritate verbosity from PamHandshakeServer
-  bool result = pam_auth_check("irods", *this, verbose);
+  bool result = pam_auth_check(server->getPamStackName(), *this, verbose);
 
   std::unique_lock<std::mutex> lk(mutex);
   cv.wait(lk, std::bind(&Session::statePredicate, this, State::Ready));
