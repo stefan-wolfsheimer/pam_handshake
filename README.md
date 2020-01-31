@@ -33,29 +33,36 @@ Run the check
 ./auth_check --name allowall
 ```
 
-## Listening on Unix Domain Socket
+Other examples:
+[functional_test/pam.d](pam.d)
+
+
+## Using the HTTP server
+**Listening on Unix Domain Socket**
 
 ```
 ./server --socket --verbose --addr /path/to/socket/file/server.socket
 ```
 
-## Listening on port
+Using curl to communicate with the server:
+
+```
+curl --unix-socket /path/to/socket/file/server.socket -X GET http://local/somepath
+```
+
+
+**Listening on port**
 
 ```
 ./server --verbose --addr 0.0.0.0 --port 8080
 ```
 
-## build container
-```
-docker build -t pam_handshake .
-```
-
-## run container
+**Using test container**
 
 ```
-docker run -ti -v $( pwd ):/host pam_handshake /bin/bash
+docker run -p 8080:8080 pam_handshake_test
 ```
 
+# Software design
 
-
-
+![StateDiagram](doc/StateDiagram.png)
