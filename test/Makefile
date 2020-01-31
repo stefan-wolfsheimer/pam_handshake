@@ -1,5 +1,5 @@
 CPP=g++
-CPP_FLAGS=-std=c++14 -g
+CPP_FLAGS=-std=c++11 -g
 INCLUDE=-I/opt/include -I../src
 LIBS=../libpam_http_server.a -lpam
 SRC=	test_pam.cpp \

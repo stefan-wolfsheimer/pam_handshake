@@ -1,5 +1,5 @@
 CPP=g++ 
-CPP_FLAGS=-std=c++14 -g
+CPP_FLAGS=-std=c++11 -g
 OBJ=	session.o \
 	pam_conversation.o \
 	http_header.o \
