@@ -1,4 +1,4 @@
-all: auth_check server runtest libpam_http_server.a
+all: auth_check server libpam_http_server.a
 
 libpam_http_server.a:
 	$(MAKE) -C src ../libpam_http_server.a

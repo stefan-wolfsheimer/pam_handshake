@@ -4,6 +4,7 @@
 #include "pam_conversation.h"
 #include <string>
 #include <exception>
+#include <stdexcept>
 #include <iostream>
 #include <string.h>
 #include <unistd.h>
