@@ -228,14 +228,26 @@ std::pair<Session::State, std::string> Session::pull(const char * answer, std::s
 
 void Session::worker()
 {
-  bool verbose = false; //todo inheritate verbosity from PamHandshakeServer
-  bool result = pam_auth_check(server->getPamStackName(), *this, verbose);
-
+  bool result = false;
+  bool err = false;
+  try
+  {
+    result = pam_auth_check(server->getPamStackName(), *this, verbose);
+  }
+  catch(std::exception ex)
+  {
+    std::cerr << ex.what() << std::endl;
+    err = true;
+  }
   std::unique_lock<std::mutex> lk(mutex);
   cv.wait(lk, std::bind(&Session::statePredicate, this, State::Ready));
   if(nextMessage.first == State::Ready)
   {
-    if(result)
+    if(err)
+    {
+      transition(State::Error);
+    }
+    else if(result)
     {
       transition(State::Authenticated);
     }
@@ -248,7 +260,7 @@ void Session::worker()
   }
 }
 
-inline void Session::transition(State s)
+inline void Session::transition(State s, bool clean_str)
 {
   if(verbose)
   {
@@ -259,6 +271,10 @@ inline void Session::transition(State s)
   else
   {
     nextMessage.first = s;
+  }
+  if(clean_str)
+  {
+    nextMessage.second = "";
   }
 }
 

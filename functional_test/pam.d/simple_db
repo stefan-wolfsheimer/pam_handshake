@@ -1,0 +1,2 @@
+# auth required pam_exec.so debug stdout /bin/echo test
+auth required pam_userdb.so db=/etc/pam.d/irods_user crypt=none debug dump

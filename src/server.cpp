@@ -392,6 +392,10 @@ void Server::put(Connection * conn,
       {
         http_code = 202;
       }
+      else if(p.first == Session::State::Error)
+      {
+        http_code = 500;
+      }
       std::string msg(HttpHeader::response(http_code));
       msg.append(Session::StateToString(p.first));
       msg.append("\r\n");

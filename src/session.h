@@ -25,7 +25,7 @@ namespace PamHandshake
         Error,            // set from parent
         Timeout,          // set from parent
         Authenticated,    // set from worker
-        NotAuthenticated  // set from worker
+        NotAuthenticated
       };
     // 0 -> Running               (parent)
     // Running -> Ready           (parent)
@@ -65,7 +65,7 @@ namespace PamHandshake
     std::time_t lastTime;
 
     void worker();
-    inline void transition(State s);
+    inline void transition(State s, bool clean_string=true);
     inline bool statePredicate(State s);
   }; 
 

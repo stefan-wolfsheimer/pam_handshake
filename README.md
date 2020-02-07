@@ -80,11 +80,15 @@ Configure PAM stack:
 
 vi /etc/pam.d/irods
 ```
-auth required pam_exec.so debug stdout /bin/echo test
 auth required pam_userdb.so db=/etc/pam.d/irods_user crypt=none debug dump stdout
 ```
 
-Start the server
+Test the stack:
+```
+./auth_check --stack irods
+```
+
+Start the server (using Unix Domain Socket)
 ```
 ./server --socket --verbose --addr server.socket
 ```
@@ -99,39 +103,18 @@ SESSION=$( curl --unix-socket server.socket -X POST http://local/ )
 
 Get the state of the session
 ```
-curl --unix-socket /path/to/socket/file/server.socket -X GET http://local/$SESSION
+curl --unix-socket server.socket -X GET http://local/$SESSION
 RUNNING
 ```
 
-## Transition to the next state
+This command can be employed anytime without chaning the state.
 
-```
-curl  --unix-socket  server.socket -X PUT http://local/$SESSION
-```
-
-Check the state
-```
-curl --unix-socket /path/to/socket/file/server.socket -X GET http://local/$SESSION
-NEXT
-```
-Session underwent the transitions: (RUNNING -> READY -> NEXT)
-
-```
-curl  --unix-socket  server.socket -X PUT http://local/$SESSION
-```
-
-## Transition to the WAITING state
+## Transition to WAITING state
 
 ```
 curl  --unix-socket  server.socket -X PUT http://local/$SESSION
 WAITING
 login:
-```
-
-Check the state
-```
-curl --unix-socket server.socket -X GET http://local/$SESSION
-WAITING
 ```
 Session is waiting for answer
 
@@ -139,11 +122,6 @@ Session is waiting for answer
 
 ```
 curl  --unix-socket  server.socket -X PUT http://local/$SESSION -d 'mara'
-```
-
-Check the state
-```
-curl --unix-socket server.socket -X GET http://local/$SESSION
 NEXT
 ```
 
@@ -157,18 +135,51 @@ WAITING
 
 ```
 curl  --unix-socket  server.socket -X PUT http://local/$SESSION -d 'pw'
+NEXT
 ```
 
-## Going to the next state
+## Going to final state
 ```
 curl  --unix-socket  server.socket -X PUT http://local/$SESSION
-AUTHROIZED
+STATE_AUTHENTICATED
 ```
 
+## Delete Session (optional)
 
+```
+curl  --unix-socket  server.socket -X DELETE http://local/$SESSION
+DELETED 7f6dda2c45cacd477fa48de35df7435f
+```
 
+If not deleted manually, session is removed by housekeeping thread.
 
+```
+curl  --unix-socket  server.socket -X GET http://local/$SESSION
+TIMEOUT
+```
 
+# Conducting functional tests
 
+## Build container
+```
+cd functional_test
+make
+```
 
+## Start container
+```
+docker run --name pam_handshake_test_inst -d -e PAM_STACK_NAME=simple_db pam_handshake_test
+```
 
+## Execute functional test
+
+```
+docker exec pam_handshake_test_inst /app/run_db_test.sh
+```
+
+## Stop container
+
+```
+docker stop pam_handshake_test_inst
+docker rm pam_handshake_test_inst
+```

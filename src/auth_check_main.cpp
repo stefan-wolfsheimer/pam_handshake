@@ -1,34 +1,39 @@
 /***********************************************************
- * Auxilarry stateful server for PAM stack conversation
- *
- * ./server [OPTIONS]
- * OPTIONS:
- * --port|-p PORT
- * --addr|-a IPv4
- * --connection_pool_size N (default: 10)
- * --connection_timeout MILLISECONDS (default: 10000)
- * --session_timeout SECONDS (default: 3600)
- * --socket|-s
- * --verbose|-v
- * --help|-h
- *
+ * 
  **/
 #include "pam_conversation.h"
 #include <string>
 #include <exception>
 #include <iostream>
+#include <string.h>
+#include <unistd.h>
+#include <termios.h>
 
 class PamClient : public ::PamHandshake::IPamClient
 {
 public:
   virtual void promptEchoOn(const char * msg, pam_response_t * resp) override
   {
+    char buf[1024];
     std::cout << "promptEchoOn \"" << msg << "\"" << std::endl;
+    resp->resp_retcode = 0;
+    std::size_t len = 0;
+    resp->resp = NULL;
+    if(getline(&resp->resp, &len, stdin) == -1)
+    {
+      throw ::std::runtime_error("failed to read message");
+    }
+    if(resp->resp)
+    {
+      resp->resp[strlen(resp->resp)-1] = '\0';
+    }
   }
 
   virtual void promptEchoOff(const char * msg, pam_response_t * resp) override
   {
     std::cout << "promptEchoOff \"" << msg << "\"" << std::endl;
+    resp->resp_retcode = 0;
+    resp->resp = strdup(getpass(""));
   }
 
   virtual void errorMsg(const char * msg) override

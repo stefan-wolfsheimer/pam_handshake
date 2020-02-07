@@ -1,5 +1,6 @@
 #include <stdexcept>
 #include <iostream>
+#include <sstream>
 #include <string.h>
 #include <security/pam_appl.h>
 #include "ipam_client.h"
@@ -111,7 +112,16 @@ bool PamHandshake::pam_auth_check(const std::string & pam_service,
     pamh = NULL;
     throw std::runtime_error("irodsPamAuthCheck: failed to release authenticator");
   }
-
+  if(retval_pam_authenticate != PAM_AUTH_ERR &&
+     retval_pam_authenticate != PAM_SUCCESS)
+  {
+    std::stringstream ss;
+    ss << "pam_authenticate: " << retval_pam_authenticate
+       << ": "
+       << pam_strerror(pamh, retval_pam_authenticate)
+       << std::endl;
+    throw std::runtime_error(ss.str());
+  }
   // indicate success (valid username and password) or not
   return retval_pam_authenticate == PAM_SUCCESS;
 }
