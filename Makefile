@@ -19,3 +19,6 @@ clean:
 	$(MAKE) -C src clean
 	$(MAKE) -C test clean
 
+install:
+	cp server /usr/sbin/pam_server
+

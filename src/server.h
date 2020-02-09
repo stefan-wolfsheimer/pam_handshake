@@ -73,6 +73,10 @@ namespace PamHandshake
            bool _verbose=false);
     ~Server();
 
+    void setConversationProgram(const std::string & exe);
+    std::string getConversationProgram() const;
+    bool hasConversationProgram() const;
+
     /**
      * \param return true if server is in verbose mode
      */
@@ -120,6 +124,9 @@ namespace PamHandshake
     int sockfd;
     std::random_device rd;
     std::mt19937 gen;
+
+    // conversation program
+    std::string conversationProgram;
 
     struct timeval readTimeout;
     struct timeval writeTimeout;

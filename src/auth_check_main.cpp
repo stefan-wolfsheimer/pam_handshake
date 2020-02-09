@@ -80,6 +80,7 @@ static std::string parseString(int argc, const char ** argv, int & i, bool & arg
   return std::string("");
 }
 
+#include <stdio.h>
 /**
  * Execute PAM conversation on command line
  */
@@ -87,9 +88,11 @@ int main(int argc, const char ** argv)
 {
   /* set default arguments */
   std::string pamStackName = "irods";
+  std::string conversationProgram;
   bool printHelp = false;
   bool argError = false;
   bool verbose = false;
+  bool bin = false;
 
   /* parse and validate arguments  */
   for(int i = 0; i < argc; ++i)
@@ -98,6 +101,14 @@ int main(int argc, const char ** argv)
     if(arg == "--stack")
     {
       pamStackName = parseString(argc, argv, i, argError);
+    }
+    else if(arg == "--conversation")
+    {
+      conversationProgram = parseString(argc, argv, i, argError);
+    }
+    else if(arg == "--bin")
+    {
+      bin = true;
     }
     else if(arg == "--help" || arg == "-h")
     {
@@ -113,7 +124,9 @@ int main(int argc, const char ** argv)
     std::cout << argv[0] << "[OPTIONS]" << std::endl;
     std::cout << "OPTIONS:" << std::endl;
     std::cout << "--stack PAM_STACK_NAME" << std::endl;
+    std::cout << "--conversation CONV_PROGRAM" << std::endl;
     std::cout << "--verbose|-v" << std::endl;
+    std::cout << "--bin" << std::endl;
     std::cout << "--help|-h" << std::endl;
     if(argError)
     {
@@ -126,8 +139,36 @@ int main(int argc, const char ** argv)
   }
 
   /* run PAM conversation  */
-  PamClient client;
-  bool result = ::PamHandshake::pam_auth_check(pamStackName, client, verbose);
+  bool result = false;
+  if(conversationProgram.empty())
+  {
+    if(bin)
+    {
+      PamHandshake::PamBinClient client;
+      try
+      {
+        result = PamHandshake::pam_auth_check(pamStackName, client, verbose);
+        PamHandshake::pam_send_auth_result(result);
+      }
+      catch(PamHandshake::PamAuthCheckException ex)
+      {
+        PamHandshake::pam_send_exception(ex);
+      }
+    }
+    else
+    {
+      PamClient client;
+      result = ::PamHandshake::pam_auth_check(pamStackName, client, verbose);
+    }
+  }
+  else
+  {
+    PamClient client;
+    result = ::PamHandshake::pam_auth_check_wrapper(conversationProgram,
+                                                    pamStackName,
+                                                    client,
+                                                    verbose);
+  }
   if(result)
   {
     std::cout << "Authenticated" << std::endl;

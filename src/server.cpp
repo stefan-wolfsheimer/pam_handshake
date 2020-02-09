@@ -153,6 +153,21 @@ Server::~Server()
   }
 }
 
+void Server::setConversationProgram(const std::string & exe)
+{
+  conversationProgram = exe;
+}
+
+std::string Server::getConversationProgram() const
+{
+  return conversationProgram;
+}
+
+bool Server::hasConversationProgram() const
+{
+  return !conversationProgram.empty();
+}
+
 void Server::init()
 {
   //sessionTimeout(session_timeout)

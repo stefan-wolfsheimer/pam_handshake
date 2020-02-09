@@ -89,6 +89,7 @@ int main(int argc, const char ** argv)
   std::size_t sessionTimeout = 3600; // seconds
   std::string addr = "0.0.0.0";
   std::string pamStackName = "irods";
+  std::string conversationProgram;
   bool printHelp = false;
   bool argError = false;
   bool verbose = false;
@@ -139,6 +140,10 @@ int main(int argc, const char ** argv)
     {
       verbose = true;
     }
+    else if(arg == "--conversation")
+    {
+      conversationProgram = parseString(argc, argv, i, argError);
+    }
   }
   if(unixSocket && !addrGiven)
   {
@@ -156,6 +161,7 @@ int main(int argc, const char ** argv)
     std::cout << "--session_timeout SECONDS (default: 3600)" << std::endl;
     std::cout << "--socket|-s" << std::endl;
     std::cout << "--stack PAM_STACK_NAME" << std::endl;
+    std::cout << "--conversation CONV_BINARY" << std::endl;
     std::cout << "--verbose|-v" << std::endl;
     std::cout << "--help|-h" << std::endl;
     if(argError)
@@ -192,6 +198,10 @@ int main(int argc, const char ** argv)
                                                       connectionTimeout,
                                                       sessionTimeout,
                                                       verbose);
+    }
+    if(!conversationProgram.empty())
+    {
+      server->setConversationProgram(conversationProgram);
     }
     server->run();
   }

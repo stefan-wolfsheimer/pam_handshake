@@ -232,11 +232,24 @@ void Session::worker()
   bool err = false;
   try
   {
-    result = pam_auth_check(server->getPamStackName(), *this, verbose);
+    if(server->hasConversationProgram())
+    {
+      result = pam_auth_check_wrapper(server->getConversationProgram(),
+                                      server->getPamStackName(),
+                                      *this,
+                                      verbose);
+    }
+    else
+    {
+      result = pam_auth_check(server->getPamStackName(), *this, verbose);
+    }
   }
-  catch(std::exception ex)
+  catch(const std::exception & ex) 
   {
-    std::cerr << ex.what() << std::endl;
+    if(verbose)
+    {
+      std::cerr << ex.what() << std::endl;
+    }
     err = true;
   }
   std::unique_lock<std::mutex> lk(mutex);
@@ -245,7 +258,7 @@ void Session::worker()
   {
     if(err)
     {
-      transition(State::Error);
+      transition(State::Error, false);
     }
     else if(result)
     {
