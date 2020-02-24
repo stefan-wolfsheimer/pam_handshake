@@ -97,7 +97,7 @@ int main(int argc, const char ** argv)
   bool addrGiven = false;
 
   /* parse and validate arguments  */
-  for(int i = 0; i < argc; ++i)
+  for(int i = 1; i < argc; ++i)
   {
     std::string arg(argv[i]);
     if(arg == "--port" || arg == "-p")
@@ -110,10 +110,15 @@ int main(int argc, const char ** argv)
     }
     else if(arg == "--addr" || arg == "-a")
     {
-      addr = parseString(argc, argv, i, argError);
-      if(!argError)
+      bool addrError = false;
+      addr = parseString(argc, argv, i, addrError);
+      if(!addrError)
       {
         addrGiven = true;
+      }
+      else
+      {
+        argError = true;
       }
     }
     else if(arg == "--connection_pool_size")
@@ -143,6 +148,11 @@ int main(int argc, const char ** argv)
     else if(arg == "--conversation")
     {
       conversationProgram = parseString(argc, argv, i, argError);
+    }
+    else
+    {
+      std::cerr << "invalid argument: " << arg << std::endl;
+      argError = true;
     }
   }
   if(unixSocket && !addrGiven)
