@@ -318,11 +318,7 @@ void Server::handle(Connection * conn)
       }
       if(header->method == "POST")
       {
-        std::string token(std::move(createSession()));
-        sprintf(buff, "%s%s",
-                HttpHeader::response(200),
-                token.c_str());
-        conn->write(buff);
+        post(conn, header);
       }
       else if(header->method == "PUT")
       {
@@ -387,11 +383,30 @@ std::string Server::createSession()
   return token;
 }
 
+void Server::post(Connection * conn,
+                  std::shared_ptr<const HttpHeader> header)
+{
+  std::string token(std::move(createSession()));
+#define BUFFSIZE 1025
+  // @todo using static buffer (pooled connection)
+  char buff[BUFFSIZE]; 
+  sprintf(buff, "%s%s",
+          HttpHeader::response(200),
+          token.c_str());
+  conn->write(buff);
+#undef BUFFSIZE
+}
+
 void Server::put(Connection * conn,
                  std::shared_ptr<const HttpHeader> header)
 {
   std::string token = std::string(header->uri.begin() + 1,
                                   header->uri.end());
+  if(token == "new")
+  {
+    post(conn, header);
+    return;
+  }
   {
     std::lock_guard<std::mutex> lock(mutex);
     auto itr = sessions.find(token);

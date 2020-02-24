@@ -7,13 +7,16 @@ OBJ=	session.o \
 	server.o
 
 LIBS=-lpam -lpthread
-all: ../server ../auth_check ../libpam_http_server.a
+all: ../server ../client ../auth_check ../libpam_http_server.a
 
 ../server: ${OBJ} server_main.o
 	${CPP} ${CPP_FLAGS} ${OBJ} server_main.o -o ../server ${LIBS}
 
 ../auth_check: ${OBJ} auth_check_main.o
 	${CPP} ${CPP_FLAGS} ${OBJ} auth_check_main.o -o ../auth_check ${LIBS}
+
+../client: client.cpp
+	${CPP} ${CPP_FLAGS} client.cpp  -o ../client -lcurl
 
 ../libpam_http_server.a: ${OBJ}
 	ar rcs $@ ${OBJ}

@@ -97,11 +97,14 @@ namespace PamHandshake
      */
     void run();
     void handle(Connection * conn);
+
     std::string createSession();
 
     /**
      * Give answer to active PAM conversation
      */
+    void post(Connection * conn,
+              std::shared_ptr<const HttpHeader> header);
     void put(Connection * conn,
              std::shared_ptr<const HttpHeader> header);
     void get(Connection * conn,
