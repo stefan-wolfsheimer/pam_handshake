@@ -20,6 +20,7 @@ namespace PamHandshake
         Running,          // set from parent
         Ready,            // set from parent
         Waiting,          // set from worker
+        WaitingPw,        // set from worker
         Answer,           // set from parent when answer is available
         Next,             // set from workder
         Error,            // set from parent
@@ -30,8 +31,10 @@ namespace PamHandshake
     // 0 -> Running               (parent)
     // Running -> Ready           (parent)
     // Ready -> Waiting           (worker)
+    // Ready -> WaitingPw         (worker)
     // Ready -> Next              (worker)
     // Waiting -> Answer          (parent)
+    // WaitingPw -> Answer        (parent)
     // Answer -> Next             (worker)
     // Next -> Ready              (parent)
     // Ready -> Authenticated     (worker)

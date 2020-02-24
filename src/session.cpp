@@ -73,7 +73,7 @@ void Session::promptEchoOff(const char * msg, pam_response_t * resp)
   cv.wait(lk, std::bind(&Session::statePredicate, this, State::Ready));
   if(nextMessage.first == State::Ready)
   {
-    transition(State::Waiting);
+    transition(State::WaitingPw);
     nextMessage.second = msg;
     lk.unlock();
     cv.notify_one();
@@ -168,6 +168,7 @@ const char * Session::StateToString(const Session::State & s)
   case State::Running: return "RUNNING";
   case State::Ready: return "READY";
   case State::Waiting: return "WAITING";
+  case State::WaitingPw: return "WAITING_PW";
   case State::Answer: return "ANSWER";
   case State::Next:  return "NEXT";
   case State::Error:  return "ERROR";
@@ -199,7 +200,8 @@ std::pair<Session::State, std::string> Session::pull(const char * answer, std::s
     {
       transition(State::Ready);
     }
-    else if(nextMessage.first == State::Waiting)
+    else if(nextMessage.first == State::Waiting ||
+            nextMessage.first == State::WaitingPw)
     {
       nextAnswer = std::string(answer, len);
       transition(State::Answer);
@@ -215,10 +217,11 @@ std::pair<Session::State, std::string> Session::pull(const char * answer, std::s
     std::unique_lock<std::mutex> lk(mutex);
     if(verbose)
     {
-      std::cout << "waiting for State::Waiting || State::Next || >State::Next" << std::endl;
+      std::cout << "waiting for State::Waiting || State::WaitingPw || State::Next || >State::Next" << std::endl;
     }
     
     cv.wait(lk, [this]{ return nextMessage.first == State::Waiting ||
+                               nextMessage.first == State::WaitingPw ||
                                nextMessage.first == State::Next ||
                                nextMessage.first >  State::Next; });
     ret = nextMessage;

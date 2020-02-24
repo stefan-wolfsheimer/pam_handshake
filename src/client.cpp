@@ -425,11 +425,10 @@ int main(int argc, const char ** argv)
         std::cout << "http_code: " << http_code << " next_state: '" << next_state << "' message: '" << message << "'" << std::endl;
       }
       answer = "";
-      if(next_state == "WAITING")
+      if(next_state == "WAITING" || next_state == "WAITING_PW")
       {
         std::cout << message << std::endl;
         std::getline(std::cin, answer);
-        std::cout << "'" << answer << "'" << std::endl;
       }
       else if(isFinal(next_state))
       {
