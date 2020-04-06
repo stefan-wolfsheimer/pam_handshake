@@ -37,9 +37,9 @@ mkdir -p %{buildroot}/etc/systemd/system/
 install -m 755 pam_handshake_server %{buildroot}/usr/bin
 install -m 755 pam_handshake_auth_check %{buildroot}/usr/bin
 install -m 755 pam-handshake.service %{buildroot}/etc/systemd/system/
-install -m 755 pam_handhake_start.sh %{buildroot}/usr/bin
-install -m 755 pam_handhake_status.sh %{buildroot}/usr/bin
-install -m 755 pam_handhake_stop.sh %{buildroot}/usr/bin
+install -m 755 pam_handshake_start.sh %{buildroot}/usr/bin
+install -m 755 pam_handshake_status.sh %{buildroot}/usr/bin
+install -m 755 pam_handshake_stop.sh %{buildroot}/usr/bin
 
 %files
 /usr/bin/pam_handshake_server
