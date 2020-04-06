@@ -3,9 +3,8 @@ variables:
   GIT_SUBMODULE_STRATEGY: recursive
   PACKAGE_NAME: pam-handshake
 stages:
-  - test
-  - build
-  - publish
+  - pull
+  - make
 
 before_script:
   - rm -f .variables
