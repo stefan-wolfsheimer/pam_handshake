@@ -1,0 +1,2 @@
+auth sufficient pam_userdb.so db=/etc/pam.d/irods_user2 crypt=none debug dump
+auth required pam_userdb.so db=/etc/pam.d/irods_user crypt=none debug dump

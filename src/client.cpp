@@ -121,6 +121,7 @@ public:
   {
     return result;
   }
+
 private:
   static std::size_t read(void *ptr, size_t size, size_t nmemb, void *data)
   {
@@ -153,7 +154,7 @@ std::tuple<int, std::string> curl_create_session(bool unixSocket,
                                                  bool verbose)
 {
   std::tuple<int, std::string, std::string> ret;
-  long response_code;
+  //long response_code;
   CURL *curl = curl_easy_init();
   CURLcode res;
   DataBuffer data("");

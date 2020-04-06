@@ -128,7 +128,7 @@ NEXT
 ## Transition to the WAITING state
 ```
 curl  --unix-socket  server.socket -X PUT http://local/$SESSION
-WAITING
+WAITING_PW
 ```
 
 ## Giving the password answer
