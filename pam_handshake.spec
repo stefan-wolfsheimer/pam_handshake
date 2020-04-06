@@ -32,14 +32,14 @@ make
 cp server pam_handshake_server
 cp auth_check pam_handshake_auth_check
 
-mkdir -p %{buildroot}/usr/bin
+mkdir -p %{buildroot}/usr/sbin
 mkdir -p %{buildroot}/etc/systemd/system/
-install -m 755 pam_handshake_server %{buildroot}/usr/bin
-install -m 755 pam_handshake_auth_check %{buildroot}/usr/bin
+install -m 755 pam_handshake_server %{buildroot}/usr/sbin
+install -m 755 pam_handshake_auth_check %{buildroot}/usr/sbin
 install -m 755 pam-handshake.service %{buildroot}/etc/systemd/system/
-install -m 755 pam_handshake_start.sh %{buildroot}/usr/bin
-install -m 755 pam_handshake_status.sh %{buildroot}/usr/bin
-install -m 755 pam_handshake_stop.sh %{buildroot}/usr/bin
+install -m 755 pam_handshake_start.sh %{buildroot}/usr/sbin
+install -m 755 pam_handshake_status.sh %{buildroot}/usr/sbin
+install -m 755 pam_handshake_stop.sh %{buildroot}/usr/sbin
 
 %files
 /usr/bin/pam_handshake_server

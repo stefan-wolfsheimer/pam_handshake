@@ -1,7 +1,7 @@
 #!/bin/bash
 set -x
 set -e
-BIN=/usr/sbin/pam_server
+BIN=/usr/sbin/pam_handshake_server
 PID_FILE=/var/pam_handshake.pid
 LOG_FILE=/var/log/pam_handshake.log
 SOCKET=/var/pam_handshake.socket
