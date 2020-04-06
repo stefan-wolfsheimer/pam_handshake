@@ -31,7 +31,7 @@ make
 
 cp server pam_handshake_server
 cp auth_check pam_handshake_auth_check
-cp client pam_handshake_client
+
 mkdir -p %{buildroot}/usr/bin
 install -m 755 pam_handshake_server %{buildroot}/usr/bin
 install -m 755 pam_handshake_auth_check %{buildroot}/usr/bin
