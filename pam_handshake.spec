@@ -36,18 +36,18 @@ mkdir -p %{buildroot}/usr/sbin
 mkdir -p %{buildroot}/etc/systemd/system/
 install -m 755 pam_handshake_server %{buildroot}/usr/sbin
 install -m 755 pam_handshake_auth_check %{buildroot}/usr/sbin
-install -m 755 pam-handshake.service %{buildroot}/etc/systemd/system/
 install -m 755 pam_handshake_start.sh %{buildroot}/usr/sbin
 install -m 755 pam_handshake_status.sh %{buildroot}/usr/sbin
 install -m 755 pam_handshake_stop.sh %{buildroot}/usr/sbin
+install -m 755 pam-handshake.service %{buildroot}/etc/systemd/system/
 
 %files
-/usr/bin/pam_handshake_server
-/usr/bin/pam_handshake_auth_check
+/usr/sbin/pam_handshake_server
+/usr/sbin/pam_handshake_auth_check
+/usr/sbin/pam_handshake_start.sh
+/usr/sbin/pam_handshake_status.sh
+/usr/sbin/pam_handshake_stop.sh
 /etc/systemd/system/pam-handshake.service
-/usr/bin/pam_handshake_start.sh
-/usr/bin/pam_handshake_status.sh
-/usr/bin/pam_handshake_stop.sh
 
 %post
 
