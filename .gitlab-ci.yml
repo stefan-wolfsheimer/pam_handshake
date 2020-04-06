@@ -1,0 +1,36 @@
+variables:
+  GIT_STRATEGY: clone
+  GIT_SUBMODULE_STRATEGY: recursive
+  PACKAGE_NAME: pam-handshake
+stages:
+  - test
+  - build
+  - publish
+
+before_script:
+  - rm -f .variables
+  - touch .variables
+  - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin  $CI_REGISTRY;
+  - echo export DOCKER_IMAGE=git.ia.surfsara.nl:5050/data-management-services/irods-ci-server/centos7_4_2_7:latest >> .variables
+  - echo export VERSION=0.1.0 >> .variables
+  - echo export IRODS_VERSION=4.2.7 >> .variables
+
+docker_pull:
+  stage: pull
+  tags:
+    - irods
+  script:
+    - source .variables
+    - docker pull $DOCKER_IMAGE
+
+make:
+  stage: make
+  tags:
+    - irods
+  script:
+    - source .variables
+    - export TARGET_DIR=/data/RPMS/$CI_PROJECT_NAMESPACE/$CI_COMMIT_REF_NAME/CentOS/7/irods-$IRODS_VERSION
+    - mkdir -p $TARGET_DIR 
+    - docker run -n build_pam_handshake -u rpmbuild -v$( pwd):/build --entrypoint "" $DOCKER_IMAGE /home/rpmbuild/build_rpm.sh --irods-version 2.4.7 --spec-file /build/pam_handshake.spec --package pam-handshake --version $VERSION
+    - docker cp build_pam_handshake:/home/rpmbuild/rpmbuild/RPMS/x86_64 $TARGET_DIR
+    - docker rm build_pam_handshake
