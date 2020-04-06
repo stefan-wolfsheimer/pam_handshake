@@ -35,13 +35,12 @@ cp auth_check pam_handshake_auth_check
 mkdir -p %{buildroot}/usr/bin
 install -m 755 pam_handshake_server %{buildroot}/usr/bin
 install -m 755 pam_handshake_auth_check %{buildroot}/usr/bin
-install -m 755 pam_handshake_client %{buildroot}/usr/bin
 
 
 %files
 /usr/bin/pam_handshake_server
 /usr/bin/pam_handshake_auth_check
-/usr/bin/pam_handshake_client
+
 
 %post
 # if [ -e /etc/irods/service_account.config ]
