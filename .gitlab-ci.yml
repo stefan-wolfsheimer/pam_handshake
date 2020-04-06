@@ -44,7 +44,7 @@ publish:
     - irods
   script:
     - source .variables
-    - export TARGET_DIR=/data/RPMS/$CI_PROJECT_NAMESPACE/$CI_COMMIT_REF_NAME/CentOS/7/irods-$IRODS_VERSION
+    - export TARGET_DIR=/data/RPMS/$CI_PROJECT_NAMESPACE/$CI_COMMIT_REF_NAME/CentOS/7/irods-$IRODS_VERSION/x86_64
     - export RPM=${PACKAGE_NAME}-${VERSION}-1.el7.x86_64.rpm
     - export REMOTE_TARGET_DIR=Centos/7/irods-$IRODS_VERSION/$CI_COMMIT_REF_NAME/x84_64/Packages
     - curl -H "X-JFrog-Art-Api:$ARTIE_KEY" -XPUT https://artie.ia.surfsara.nl/artifactory/${REPO}/${REMOTE_TARGET_DIR}/${RPM} -T $TARGET_DIR/${RPM}
