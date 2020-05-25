@@ -10,6 +10,9 @@
 #include <signal.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <grp.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
@@ -20,7 +23,9 @@ InetAddr::InetAddr(const std::string & _ip,
 {
 }
 
-UnixDomainAddr::UnixDomainAddr(const std::string & _addr) : addr(_addr)
+UnixDomainAddr::UnixDomainAddr(const std::string & _addr,
+                               const std::string & _chgrp)
+  : addr(_addr), chgrp(_chgrp)
 {
 }
 
@@ -83,6 +88,7 @@ Server::Server(const InetAddr & inetaddr,
       std::cout << "socket successfully bound" << std::endl;
     }
   }
+  housekeeper = std::make_shared<std::thread>(std::bind(&Server::housekeeping, this));
 }
 
 Server::Server(const UnixDomainAddr & uda,
@@ -93,6 +99,7 @@ Server::Server(const UnixDomainAddr & uda,
                bool _verbose)
   : pam_stack_name(_pam_stack_name),
     socketFile(uda.addr),
+    socketFileChgrp(uda.chgrp),
     port(0),
     verbose(_verbose),
     running(false),
@@ -137,7 +144,50 @@ Server::Server(const UnixDomainAddr & uda,
     {
       std::cout << "socket successfully bound" << std::endl;
     }
+    if(!socketFileChgrp.empty())
+    {
+      if(verbose)
+      {
+        std::cout << "find gid for '" << socketFileChgrp << "'" << std::endl;
+      }
+      struct group * gr = ::getgrnam(socketFileChgrp.c_str());
+      if(!gr)
+      {
+        std::string msg("invalid group ");
+        msg += socketFileChgrp;
+        throw std::runtime_error(msg.c_str());
+      }
+      if(verbose)
+      {
+        std::cout << "chgrp of '" << socketFile << "' to '" << socketFileChgrp << "' gid=" << gr->gr_gid << std::endl;
+      }
+      if(::chown(socketFile.c_str(), -1, gr->gr_gid))
+      {
+        std::string msg("cannot change group of socket file '");
+        msg+= socketFile;
+        msg+= "'";
+        throw std::runtime_error(msg.c_str());
+      }
+      struct stat sbuffer;
+      if(::stat(socketFile.c_str(), &sbuffer))
+      {
+        std::string msg("cannot stat of '");
+        msg+= socketFile;
+        msg+= "'";
+        throw std::runtime_error(msg.c_str());
+      }
+      sbuffer.st_mode|= S_IRGRP; //read by group
+      sbuffer.st_mode|= S_IWGRP; //write by group
+      if(::chmod(socketFile.c_str(), sbuffer.st_mode))
+      {
+        std::string msg("cannot change mode of '");
+        msg+= socketFile;
+        msg+= "'";
+        throw std::runtime_error(msg.c_str());
+      }
+    }
   }
+  housekeeper = std::make_shared<std::thread>(std::bind(&Server::housekeeping, this));
 }
 
 Server::~Server()
@@ -177,7 +227,7 @@ void Server::init()
   writeTimeout.tv_usec = connectionTimeout * 1000;
   servaddr = nullptr;
   sockaddr = nullptr;
-  housekeeper = std::make_shared<std::thread>(std::bind(&Server::housekeeping, this));
+  //housekeeper = std::make_shared<std::thread>(std::bind(&Server::housekeeping, this));
   if(verbose)
   {
     std::cout << "Server started using PAM stack /etc/pam.d/" << pam_stack_name << std::endl;

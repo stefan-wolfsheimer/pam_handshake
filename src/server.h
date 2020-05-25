@@ -30,9 +30,11 @@ namespace PamHandshake
   {
   public:
     friend class Server;
-    UnixDomainAddr(const std::string & _addr);
+    UnixDomainAddr(const std::string & _addr,
+                   const std::string & _chgrp="");
   private:
     std::string addr;
+    std::string chgrp;
   };
 
   /**
@@ -119,6 +121,7 @@ namespace PamHandshake
     std::string pam_stack_name;
     std::string ip;
     std::string socketFile;
+    std::string socketFileChgrp;
     uint16_t port;
     struct ::sockaddr_in * servaddr;
     struct ::sockaddr_un * sockaddr;
