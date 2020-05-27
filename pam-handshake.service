@@ -3,8 +3,8 @@ Description=PAM handshake service
 After=network.target
 
 [Service]
-ExecStart=/usr/sbin/pam_handshake_server --scoket --addr /var/pam_handshake.socket --stack irods
-Type=forking
+ExecStart=/usr/sbin/pam_handshake_server --socket --addr /var/pam_handshake.socket --stack irods --chgrp irods
+Type=simple
 PIDFile=/var/pam_handshake.pid
 StandardOutput=file:/var/log/pam_handshake_server.log
 StandardError=file:/var/log/pam_handshake_server.err

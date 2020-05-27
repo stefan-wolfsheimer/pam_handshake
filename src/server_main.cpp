@@ -90,12 +90,17 @@ int main(int argc, const char ** argv)
   std::string addr = "0.0.0.0";
   std::string pamStackName = "irods";
   std::string conversationProgram;
+  std::string chgrp;
   bool printHelp = false;
   bool argError = false;
   bool verbose = false;
   bool unixSocket = false;
   bool addrGiven = false;
 
+  //chgrp irods /var/pam_handshake.socket
+  //chmod g+w /var/pam_handshake.socket
+
+  
   /* parse and validate arguments  */
   for(int i = 1; i < argc; ++i)
   {
@@ -137,6 +142,10 @@ int main(int argc, const char ** argv)
     {
       pamStackName = parseString(argc, argv, i, argError);
     }
+    else if(arg == "--chgrp")
+    {
+      chgrp = parseString(argc, argv, i, argError);
+    }
     else if(arg == "--help" || arg == "-h")
     {
       printHelp = true;
@@ -170,6 +179,7 @@ int main(int argc, const char ** argv)
     std::cout << "--connection_timeout MILLISECONDS (default: 10000)" << std::endl;
     std::cout << "--session_timeout SECONDS (default: 3600)" << std::endl;
     std::cout << "--socket|-s" << std::endl;
+    std::cout << "--chgrp GROUP_NAME" << std::endl;
     std::cout << "--stack PAM_STACK_NAME" << std::endl;
     std::cout << "--conversation CONV_BINARY" << std::endl;
     std::cout << "--verbose|-v" << std::endl;
@@ -191,7 +201,7 @@ int main(int argc, const char ** argv)
 
     if(unixSocket)
     {
-      PamHandshake::UnixDomainAddr socketAddr(addr);
+      PamHandshake::UnixDomainAddr socketAddr(addr, chgrp);
       server = std::make_shared<PamHandshake::Server>(socketAddr,
                                                       pamStackName,
                                                       connectionPoolSize,
