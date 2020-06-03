@@ -13,7 +13,7 @@ before_script:
   - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin  $CI_REGISTRY;
   - echo export DOCKER_IMAGE=git.ia.surfsara.nl:5050/data-management-services/irods-ci-server/centos7_4_2_7:latest >> .variables
   - echo export VERSION=0.1.0 >> .variables
-  - echo export IRODS_VERSION=4.2.7 >> .variables
+  - echo export IRODS_VERSIONS=4.2.7,4.2.8 >> .variables
   - echo export PACKAGE_NAME >> .variables
   - echo export REPO=DMS-RPM-Testing >> .variables
 
@@ -31,12 +31,16 @@ make:
     - irods
   script:
     - source .variables
-    - export TARGET_DIR=/data/RPMS/$CI_PROJECT_NAMESPACE/$CI_COMMIT_REF_NAME/CentOS/7/irods-$IRODS_VERSION
-    - mkdir -p $TARGET_DIR
-    - docker rm build_pam_handshake || true
-    - docker run --name build_pam_handshake -u rpmbuild -v$( pwd):/build --entrypoint "" $DOCKER_IMAGE /home/rpmbuild/build_rpm.sh --irods-version 2.4.7 --spec-file /build/pam_handshake.spec --package ${PACKAGE_NAME} --version $VERSION
-    - docker cp build_pam_handshake:/home/rpmbuild/rpmbuild/RPMS/x86_64 $TARGET_DIR
-    - docker rm build_pam_handshake
+    - |
+      for IRODS_VERSION in ${IRODS_VERSIONS//,/$'\n'}
+      do
+         export TARGET_DIR=/data/RPMS/$CI_PROJECT_NAMESPACE/$CI_COMMIT_REF_NAME/CentOS/7/irods-$IRODS_VERSION
+         mkdir -p $TARGET_DIR
+         docker rm build_pam_handshake || true
+         docker run --name build_pam_handshake -u rpmbuild -v$( pwd):/build --entrypoint "" $DOCKER_IMAGE /home/rpmbuild/build_rpm.sh --irods-version 2.4.7 --spec-file /build/pam_handshake.spec --package ${PACKAGE_NAME} --version $VERSION
+         docker cp build_pam_handshake:/home/rpmbuild/rpmbuild/RPMS/x86_64 $TARGET_DIR
+         docker rm build_pam_handshake
+      done
 
 publish:
   stage: publish
@@ -44,9 +48,12 @@ publish:
     - irods
   script:
     - source .variables
-    - export TARGET_DIR=/data/RPMS/$CI_PROJECT_NAMESPACE/$CI_COMMIT_REF_NAME/CentOS/7/irods-$IRODS_VERSION/x86_64
-    - export RPM=${PACKAGE_NAME}-${VERSION}-1.el7.x86_64.rpm
-    - export TRPM=${PACKAGE_NAME}-${VERSION}-${CI_PIPELINE_ID}.el7.x86_64.rpm
-    - export REMOTE_TARGET_DIR=Centos/7/irods-$IRODS_VERSION/$CI_COMMIT_REF_NAME/x86_64/Packages
-    - curl -H "X-JFrog-Art-Api:$ARTIE_KEY" -XPUT https://artie.ia.surfsara.nl/artifactory/${REPO}/${REMOTE_TARGET_DIR}/${TRPM} -T $TARGET_DIR/${RPM}
-
+    - |
+      for IRODS_VERSION in ${IRODS_VERSIONS//,/$'\n'}
+      do
+        export TARGET_DIR=/data/RPMS/$CI_PROJECT_NAMESPACE/$CI_COMMIT_REF_NAME/CentOS/7/irods-$IRODS_VERSION/x86_64
+        export RPM=${PACKAGE_NAME}-${VERSION}-1.el7.x86_64.rpm
+        export TRPM=${PACKAGE_NAME}-${VERSION}-${CI_PIPELINE_ID}.el7.x86_64.rpm
+        export REMOTE_TARGET_DIR=Centos/7/irods-$IRODS_VERSION/$CI_COMMIT_REF_NAME/x86_64/Packages
+        curl -H "X-JFrog-Art-Api:$ARTIE_KEY" -XPUT https://artie.ia.surfsara.nl/artifactory/${REPO}/${REMOTE_TARGET_DIR}/${TRPM} -T $TARGET_DIR/${RPM}
+      done
