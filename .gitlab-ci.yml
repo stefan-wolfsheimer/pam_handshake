@@ -37,7 +37,12 @@ make:
          export TARGET_DIR=/data/RPMS/$CI_PROJECT_NAMESPACE/$CI_COMMIT_REF_NAME/CentOS/7/irods-$IRODS_VERSION
          mkdir -p $TARGET_DIR
          docker rm build_pam_handshake || true
-         docker run --name build_pam_handshake -u rpmbuild -v$( pwd):/build --entrypoint "" $DOCKER_IMAGE /home/rpmbuild/build_rpm.sh --irods-version 2.4.7 --spec-file /build/pam_handshake.spec --package ${PACKAGE_NAME} --version $VERSION
+         docker run --name build_pam_handshake -u rpmbuild -v$( pwd):/build \
+                    --entrypoint "" $DOCKER_IMAGE /home/rpmbuild/build_rpm.sh \
+                    --irods-version ${IRODS_VERSION} \
+                    --spec-file /build/pam_handshake.spec \
+                    --package ${PACKAGE_NAME} \
+                    --version $VERSION
          docker cp build_pam_handshake:/home/rpmbuild/rpmbuild/RPMS/x86_64 $TARGET_DIR
          docker rm build_pam_handshake
       done
