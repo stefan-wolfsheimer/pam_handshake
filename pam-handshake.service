@@ -3,7 +3,7 @@ Description=PAM handshake service
 After=network.target
 
 [Service]
-ExecStart=/usr/sbin/pam_handshake_server --socket --addr /var/pam_handshake.socket --stack irods --chgrp irods
+ExecStart=/usr/sbin/pam_handshake_server --socket --addr /var/pam_handshake.socket --stack irods --chgrp $( awk 'BEGIN{ FS="="; }{ if($1=="IRODS_SERVICE_GROUP_NAME") print $2; }' /etc/irods/service_account.config )
 Type=simple
 PIDFile=/var/pam_handshake.pid
 StandardOutput=file:/var/log/pam_handshake_server.log

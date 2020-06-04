@@ -6,6 +6,7 @@ PID_FILE=/var/pam_handshake.pid
 LOG_FILE=/var/log/pam_handshake.log
 SOCKET=/var/pam_handshake.socket
 STACK=irods
+GROUP=$( awk 'BEGIN{ FS="="; }{ if($1=="IRODS_SERVICE_GROUP_NAME") print $2; }' /etc/irods/service_account.config )
 
 if [ -e "$PID_FILE" ]
 then
@@ -24,10 +25,10 @@ else
     echo "process not running"
 fi
 
-msg="starting $BIN  --socket --verbose --addr $SOCKET --stack $STACK"
+msg="starting $BIN  --socket --verbose --addr $SOCKET --stack $STACK --chgrp $GROUP"
 echo $msg
 echo $msg >> $LOG_FILE
-$BIN  --socket --verbose --addr $SOCKET --stack $STACK 2>&1 >> $LOG_FILE &
+$BIN  --socket --verbose --addr $SOCKET --stack $STACK --chgrp $GROUP 2>&1 >> $LOG_FILE &
 pid=$!
 echo "started with pid $pid"
 echo $pid > $PID_FILE
