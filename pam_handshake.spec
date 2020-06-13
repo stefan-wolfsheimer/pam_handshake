@@ -1,6 +1,6 @@
 Name:           %{packagename}
 Version:        %{version}
-Release:        1%{?dist}
+Release:        %{release}
 Summary:        Integration of iRODS and handle system via microservices.
 
 License:        GPLv3+
