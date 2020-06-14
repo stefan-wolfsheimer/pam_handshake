@@ -18,13 +18,13 @@ Python PAM module
 make -C src_module
 
 %install
-mkdir -p %{buildroot}/lib/security/pam_python3.so
-cp src_module/pam_python3.so %{buildroot}/lib/security/pam_python3.so
-cp src_module/pam_python.so %{buildroot}/lib/security/pam_python.so
+mkdir -p %{buildroot}/lib64/security
+cp src_module/pam_python3.so %{buildroot}/lib64/security/pam_python3.so
+cp src_module/pam_python.so %{buildroot}/lib64/security/pam_python.so
 
 %files
-/lib/security/pam_python3.so
-/lib/security/pam_python.so
+/lib64/security/pam_python3.so
+/lib64/security/pam_python.so
 
 %post
 
