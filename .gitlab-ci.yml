@@ -16,7 +16,7 @@ before_script:
   - echo export MODULE_VERSION=0.1.0 >> .variables
   - echo export IRODS_VERSIONS=4.2.7,4.2.8 >> .variables
   - echo export PACKAGE_NAME=pam-handshake >> .variables
-  - echo export MODULE_PACKAGE_NAME=python-pam-modules >> .variables
+  - echo export MODULE_PACKAGE_NAME=python-pam-module >> .variables
   - echo export REPO=DMS-RPM-Testing >> .variables
 
 docker_pull:
@@ -65,7 +65,7 @@ make_python_pam_modules:
          docker run --name build_python_pam_modules -u rpmbuild -v$( pwd):/build \
                     --entrypoint "" $DOCKER_IMAGE /home/rpmbuild/build_rpm.sh \
                     --irods-version ${IRODS_VERSION} \
-                    --spec-file /build/pam_python_module.spec \
+                    --spec-file /build/python_pam_module.spec \
                     --package ${MODULE_PACKAGE_NAME} \
                     --version ${MODULE_VERSION} \
                     --release ${CI_PIPELINE_ID}
