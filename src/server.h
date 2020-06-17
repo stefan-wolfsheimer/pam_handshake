@@ -114,6 +114,11 @@ namespace PamHandshake
     void deleteSession(Connection * conn,
                        std::shared_ptr<const HttpHeader> header);
     std::string randomString(std::size_t len);
+    void response(Connection * conn,
+                  int code,
+                  const std::string & content);
+    void response_not_found(Connection * conn,
+                            const std::string & content);
   private:
     void init();
     void housekeeping();

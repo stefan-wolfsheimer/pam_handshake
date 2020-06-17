@@ -437,14 +437,9 @@ void Server::post(Connection * conn,
                   std::shared_ptr<const HttpHeader> header)
 {
   std::string token(std::move(createSession()));
-#define BUFFSIZE 1025
-  // @todo using static buffer (pooled connection)
-  char buff[BUFFSIZE]; 
-  sprintf(buff, "%s%s",
-          HttpHeader::response(200),
-          token.c_str());
-  conn->write(buff);
-#undef BUFFSIZE
+  response(conn,
+           200,
+           token);
 }
 
 void Server::put(Connection * conn,
@@ -476,19 +471,13 @@ void Server::put(Connection * conn,
       {
         http_code = 500;
       }
-      std::string msg(HttpHeader::response(http_code));
-      msg.append(Session::StateToString(p.first));
-      msg.append("\r\n");
-      msg.append(p.second);
-      conn->write(msg.c_str());
+      response(conn,
+               http_code,
+               std::string(Session::StateToString(p.first)) + "\r\n" + p.second);
     }
     else
     {
-      std::string msg(HttpHeader::response(404));
-      msg.append("NOT FOUND ");
-      msg += token;
-      msg.append("\r\n");
-      conn->write(msg.c_str());
+      response_not_found(conn, token);
     }
   }
 }
@@ -504,19 +493,14 @@ void Server::get(Connection * conn,
 
     if(itr != sessions.end())
     {
-      std::string msg(HttpHeader::response(200));
       itr->second->refresh();
-      msg.append(Session::StateToString(itr->second->getState()));
-      msg.append("\r\n");
-      conn->write(msg.c_str());
+      response(conn,
+               200,
+               std::string(Session::StateToString(itr->second->getState())) + "\r\n");
     }
     else
     {
-      std::string msg(HttpHeader::response(404));
-      msg.append("NOT FOUND ");
-      msg += token;
-      msg.append("\r\n");
-      conn->write(msg.c_str());
+      response_not_found(conn, token);
     }
   }
 }
@@ -533,21 +517,36 @@ void Server::deleteSession(Connection * conn,
     {
       itr->second->cancel();
       itr->second->refresh();
-      std::string msg(HttpHeader::response(200));
-      msg.append("DELETED ");
-      msg += token;
-      msg.append("\r\n");
-      conn->write(msg.c_str());
+      response(conn,
+               200,
+               std::string("DELETED ") + token + "\r\n");
     }
     else
     {
-      std::string msg(HttpHeader::response(404));
-      msg.append("NOT FOUND ");
-      msg += token;
-      msg.append("\r\n");
-      conn->write(msg.c_str());
+      response_not_found(conn, token);
     }
   }
+}
+
+void Server::response(Connection * conn,
+                      int code,
+                      const std::string & content)
+{
+  //@todo better boundary check
+  char buff[200];
+  snprintf(buff,
+           199,
+           HttpHeader::responseWithLength(code),
+           content.size());
+  conn->write(buff);
+  conn->write(content);
+}
+
+void Server::response_not_found(Connection * conn, const std::string & content)
+{
+  response(conn,
+           404,
+           std::string("NOT FOUND ") + content + "\r\n");
 }
 
 std::string Server::randomString(std::size_t len)

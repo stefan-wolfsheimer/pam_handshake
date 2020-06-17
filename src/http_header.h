@@ -17,6 +17,7 @@ namespace PamHandshake
     HttpHeader(const char * buff, std::size_t len = 0);
     ~HttpHeader();
     static const char * response(int code);
+    static const char * responseWithLength(int code);
   };
 }
 
