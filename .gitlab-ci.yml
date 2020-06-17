@@ -107,7 +107,7 @@ publish_python_pam_modules:
         TRPM=${MODULE_PACKAGE_NAME}-${MODULE_VERSION}-${CI_PIPELINE_ID}.x86_64.rpm
         REMOTE_TARGET_DIR=Centos/7/irods-$IRODS_VERSION/$CI_COMMIT_REF_NAME/x86_64/Packages
         for IREPO in $( echo ${REPO} | tr ',' ' ' )
-        done
+        do
           curl -H "X-JFrog-Art-Api:$ARTIE_KEY" -XPUT https://artie.ia.surfsara.nl/artifactory/${IREPO}/${REMOTE_TARGET_DIR}/${TRPM} -T $TARGET_DIR/${RPM}
         done
       done
