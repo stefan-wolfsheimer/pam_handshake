@@ -324,7 +324,6 @@ void Server::run()
       {
         {
           std::lock_guard<std::mutex> lock(mutex);
-          std::cout << "new connection " << connection_id << std::endl;
         }
       }
       auto p = connections.insert(std::make_pair(connection_id,
