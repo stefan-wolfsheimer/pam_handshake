@@ -17,7 +17,7 @@ before_script:
   - echo export IRODS_VERSIONS=4.2.7,4.2.8 >> .variables
   - echo export PACKAGE_NAME=pam-handshake >> .variables
   - echo export MODULE_PACKAGE_NAME=python-pam-module >> .variables
-  - echo export REPO=DMS-RPM-Testing >> .variables
+  - echo export REPO=DMS-RPM-Testing,DMS-RPM-Testing-Public >> .variables
 
 docker_pull:
   stage: pull
@@ -86,9 +86,10 @@ publish:
         RPM=${PACKAGE_NAME}-${VERSION}-${CI_PIPELINE_ID}.x86_64.rpm
         TRPM=${PACKAGE_NAME}-${VERSION}-${CI_PIPELINE_ID}.x86_64.rpm
         REMOTE_TARGET_DIR=Centos/7/irods-$IRODS_VERSION/$CI_COMMIT_REF_NAME/x86_64/Packages
-        curl -H "X-JFrog-Art-Api:$ARTIE_KEY" -XPUT https://artie.ia.surfsara.nl/artifactory/${REPO}/${REMOTE_TARGET_DIR}/${TRPM} -T $TARGET_DIR/${RPM}
-
-        
+        for IREPO in $( echo ${REPO} | tr ',' ' ' )
+        do
+          curl -H "X-JFrog-Art-Api:$ARTIE_KEY" -XPUT https://artie.ia.surfsara.nl/artifactory/${IREPO}/${REMOTE_TARGET_DIR}/${TRPM} -T $TARGET_DIR/${RPM}
+        done
       done
 
 
@@ -105,5 +106,8 @@ publish_python_pam_modules:
         RPM=${MODULE_PACKAGE_NAME}-${MODULE_VERSION}-${CI_PIPELINE_ID}.x86_64.rpm
         TRPM=${MODULE_PACKAGE_NAME}-${MODULE_VERSION}-${CI_PIPELINE_ID}.x86_64.rpm
         REMOTE_TARGET_DIR=Centos/7/irods-$IRODS_VERSION/$CI_COMMIT_REF_NAME/x86_64/Packages
-        curl -H "X-JFrog-Art-Api:$ARTIE_KEY" -XPUT https://artie.ia.surfsara.nl/artifactory/${REPO}/${REMOTE_TARGET_DIR}/${TRPM} -T $TARGET_DIR/${RPM}
+        for IREPO in $( echo ${REPO} | tr ',' ' ' )
+        done
+          curl -H "X-JFrog-Art-Api:$ARTIE_KEY" -XPUT https://artie.ia.surfsara.nl/artifactory/${IREPO}/${REMOTE_TARGET_DIR}/${TRPM} -T $TARGET_DIR/${RPM}
+        done
       done
