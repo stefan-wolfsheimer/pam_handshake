@@ -18,8 +18,7 @@ namespace PamHandshake
     ~Connection();
     Server * getServer() const;
     std::size_t getConnectionId() const;
-
-    std::size_t read(char * buff, size_t len);
+    int read(char * buff, size_t len);
     void write(const char * buff, size_t len);
     void write(const std::string & buff);
 

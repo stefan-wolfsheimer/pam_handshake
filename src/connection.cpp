@@ -32,7 +32,7 @@ std::size_t Connection::getConnectionId() const
   return connectionId;
 }
 
-size_t Connection::read(char * buff, size_t len)
+int Connection::read(char * buff, size_t len)
 {
   fd_set set;
   struct timeval timeout = server->readTimeout;

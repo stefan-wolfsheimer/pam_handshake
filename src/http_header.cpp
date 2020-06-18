@@ -2,31 +2,29 @@
 #include <string.h>
 #include <exception>
 
-using namespace PamHandshake;
-HttpHeader::HttpHeader()
-{
-  content = nullptr;
-  payload_size = 0;
-}
-
-HttpHeader::HttpHeader(const char * buff, std::size_t len)
-{
 #define STATE_CONTENT 0
 #define STATE_METHOD 1
 #define STATE_URI 2
 #define STATE_PROT 3
-#define STATE_HEADER 4
-#define STATE_VALUE 5
-  if(len == 0)
-  {
-    len = strlen(buff);
-  }
-  int state = STATE_METHOD;
-  const char * last = buff;
+#define STATE_NL 4
+#define STATE_VALUE_SPACE 5
+#define STATE_HEADER 6
+#define STATE_KEY 6
+#define STATE_VALUE 7
+#define STATE_CONTENT_NL 8
+
+using namespace PamHandshake;
+HttpHeader::HttpHeader()
+{
+  payload_size = 0;
+  state = STATE_METHOD;
+}
+
+void HttpHeader::parse_chunk(const char * buff, std::size_t len)
+{
+  // @todo more efficient buffering
   const char * pos = buff;
-  std::string key;
-  std::string value;
-  while(state)
+  for(std::size_t i = 0; i < len; i++)
   {
     switch(state)
     {
@@ -34,118 +32,116 @@ HttpHeader::HttpHeader(const char * buff, std::size_t len)
       if(*pos == ' ')
       {
         state = STATE_URI;
-        method.append(last, pos);
-        ++pos;
-        last = pos;
       }
       else
       {
-        ++pos;
+        method.push_back(*pos);
       }
       break;
     case STATE_URI:
       if(*pos == ' ')
       {
         state = STATE_PROT;
-        uri.append(last, pos);
-        ++pos;
-        last = pos;
       }
       else
       {
-        ++pos;
+        uri.push_back(*pos);
       }
       break;
     case STATE_PROT:
       if(*pos == '\r')
       {
-        proto.append(last, pos);
-        ++pos;
-        if(*pos == '\n')
-        {
-          ++pos;
-          state = STATE_HEADER;
-          last = pos;
-        }
-        else
-        {
-          throw std::runtime_error("invalid header");
-        }
+        state = STATE_NL;
       }
       else
       {
-        ++pos;
+        proto.push_back(*pos);
+      }
+      break;
+    case STATE_NL:
+      if(*pos == '\n')
+      {
+        state = STATE_HEADER;
+      }
+      else
+      {
+        throw std::runtime_error("invalid header");
       }
       break;
     case STATE_HEADER:
       if(*pos == ':')
       {
-        key.append(last, pos);
-        ++pos;
-        if(*pos == ' ')
-        {
-          ++pos;
-        }
-        state = STATE_VALUE;
-        last = pos;
+        state = STATE_VALUE_SPACE;
       }
       else if(*pos == '\r')
       {
-        if(!key.empty())
+        if(!curr_key.empty())
         {
           throw std::runtime_error("invalid header");
         }
-        ++pos;
-        if(*pos == '\n')
-        {
-          ++pos;
-          content = pos;
-          state = STATE_CONTENT;
-          auto itr = values.find("Content-Length");
-          payload_size = (itr == values.end()) ? (len - (pos - buff)) : atol(itr->second.c_str());
-        }
-        else
-        {
-          throw std::runtime_error("invalid header");
-        }
+        state = STATE_CONTENT_NL;
       }
       else
       {
-        ++pos;
+        curr_key.push_back(*pos);
+      }
+      break;
+    case STATE_VALUE_SPACE:
+      if(*pos != ' ')
+      {
+        curr_value.push_back(*pos);
+        state = STATE_VALUE;
       }
       break;
     case STATE_VALUE:
       if(*pos == '\r')
       {
-        value.append(last, pos);
-        values.insert(std::make_pair(key, value));
-        key.clear();
-        value.clear();
-        ++pos;
-        if(*pos == '\n')
+        state = STATE_NL;
+        values.insert(std::make_pair(curr_key, curr_value));
+        if(curr_key == "Content-Length")
         {
-          ++pos;
-          state = STATE_HEADER;
-          last = pos;
+          payload_size = atol(curr_value.c_str());
         }
+        curr_key.clear();
+        curr_value.clear();
       }
       else
       {
-        ++pos;
+        curr_value.push_back(*pos);
+      }
+      break;
+    case STATE_CONTENT_NL:
+      if(*pos == '\n')
+      {
+        state = STATE_CONTENT;
+      }
+      else
+      {
+        throw std::runtime_error("invalid header");
       }
       break;
     case STATE_CONTENT:
-      break;
+      content.push_back(*pos);
     }
+    pos++;
   }
+}
+
+bool HttpHeader::header_read() const
+{
+  return state == STATE_CONTENT;
+}
 
 #undef STATE_CONTENT
 #undef STATE_METHOD
 #undef STATE_URI
 #undef STATE_PROT
+#undef STATE_NL
+#undef STATE_VALUE_SPACE
 #undef STATE_HEADER
+#undef STATE_KEY
 #undef STATE_VALUE
-}
+#undef STATE_CONTENT_NL
 
 HttpHeader::~HttpHeader()
 {

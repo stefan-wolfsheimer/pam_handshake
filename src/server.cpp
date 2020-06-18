@@ -327,7 +327,9 @@ void Server::run()
         }
       }
       auto p = connections.insert(std::make_pair(connection_id,
-                                                 std::thread(std::bind(&Server::handle, this, std::placeholders::_1),
+                                                 std::thread(std::bind(&Server::handle,
+                                                                       this,
+                                                                       std::placeholders::_1),
                                                              new Connection(connfd, connection_id, this))));
       p.first->second.detach();
     }
@@ -344,47 +346,68 @@ void Server::run()
 
 void Server::handle(Connection * conn)
 {
-#define BUFFSIZE 1025
-  // @todo using static buffer (pooled connection)
-  char buff[BUFFSIZE]; 
   try
   {
-    std::size_t l = conn->read(buff, BUFFSIZE);
-    if(l >= BUFFSIZE)
+    auto header = std::make_shared<HttpHeader>();
+    char buff[256];
+    bool get_cotent = true;
+    int n;
+    while(!header->header_read())
     {
-      const char * msg = HttpHeader::response(413);
-      conn->write(msg, strlen(msg));
+      n = conn->read(buff, sizeof(buff)-1);
+      if(n < 0)
+      {
+        throw std::runtime_error("failed to read buffer");
+      }
+      if(n > 0)
+      {
+        header->parse_chunk(buff, n);
+      }
+      if(!header->header_read())
+      {
+        conn->write(HttpHeader::response(100));
+      }
+    }
+    if(!header->header_read())
+    {
+      throw std::runtime_error("failed to read HTTP header");
+    }
+    while(header->payload_size > header->content.size())
+    {
+      conn->write(HttpHeader::response(100));
+      n = conn->read(buff, sizeof(buff)-1);
+      if(n < 0)
+      {
+        throw std::runtime_error("failed to read buffer");
+      }
+      header->parse_chunk(buff, n);
+    }
+    if(verbose)
+    {
+      {
+        std::lock_guard<std::mutex> lock(mutex);
+        std::cout << *header << std::endl;
+      }
+    }
+    if(header->method == "POST")
+    {
+      post(conn, header);
+    }
+    else if(header->method == "PUT")
+    {
+      put(conn, header);
+    }
+    else if(header->method == "GET")
+    {
+      get(conn, header);
+    }
+    else if(header->method == "DELETE")
+    {
+      deleteSession(conn, header);
     }
     else
     {
-      auto header = std::make_shared<HttpHeader>(buff, l);
-      if(verbose)
-      {
-        {
-          std::lock_guard<std::mutex> lock(mutex);
-          std::cout << *header << std::endl;
-        }
-      }
-      if(header->method == "POST")
-      {
-        post(conn, header);
-      }
-      else if(header->method == "PUT")
-      {
-        put(conn, header);
-      }
-      else if(header->method == "GET")
-      {
-        get(conn, header);
-      }
-      else if(header->method == "DELETE")
-      {
-        deleteSession(conn, header);
-      }
-      else
-      {
-        conn->write(HttpHeader::response(405));
-      }
+      conn->write(HttpHeader::response(405));
     }
   }
   catch(ConnectionTimeout & ex)
@@ -418,7 +441,6 @@ void Server::handle(Connection * conn)
     std::lock_guard<std::mutex> lock(mutex);
     connections.erase(connectionId);
   }
-#undef BUFFSIZE
 }
 
 std::string Server::createSession()
@@ -456,7 +478,8 @@ void Server::put(Connection * conn,
     auto itr = sessions.find(token);
     if(itr != sessions.end())
     {
-      auto p = itr->second->pull(header->content, header->payload_size);
+      auto p = itr->second->pull(header->content.c_str(),
+                                 header->content.size());
       int http_code = 200;
       if(p.first == Session::State::NotAuthenticated)
       {
