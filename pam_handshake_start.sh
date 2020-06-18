@@ -2,6 +2,9 @@
 
 set -e
 BIN=/usr/sbin/pam_handshake_server
+# use auth check bin because not all pam modules are thread safe
+AUTH_CHECK_BIN="--conversation /usr/sbin/pam_handshake_auth_check"
+
 PID_FILE=/var/pam_handshake.pid
 LOG_FILE=/var/log/pam_handshake.log
 SOCKET=/var/pam_handshake.socket
@@ -25,10 +28,10 @@ else
     echo "process not running"
 fi
 
-msg="starting $BIN  --socket --verbose --addr $SOCKET --stack $STACK --chgrp $GROUP"
+msg="starting $BIN  --socket --verbose --addr $SOCKET --stack $STACK --chgrp $GROUP $AUTH_CHECK_BIN"
 echo $msg
 echo $msg >> $LOG_FILE
-$BIN  --socket --verbose --addr $SOCKET --stack $STACK --chgrp $GROUP 2>&1 >> $LOG_FILE &
+$BIN  --socket --verbose --addr $SOCKET --stack $STACK --chgrp $GROUP $AUTH_CHECK_BIN 2>&1 >> $LOG_FILE &
 pid=$!
 echo "started with pid $pid"
 echo $pid > $PID_FILE
