@@ -26,6 +26,10 @@ void HttpHeader::parse_chunk(const char * buff, std::size_t len)
   const char * pos = buff;
   for(std::size_t i = 0; i < len; i++)
   {
+    if(*pos == '\0')
+    {
+      break;
+    }
     switch(state)
     {
     case STATE_METHOD:

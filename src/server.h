@@ -5,6 +5,7 @@
 #include <thread>
 #include <map>
 #include <vector>
+#include <set>
 
 struct sockaddr_in;
 struct sockaddr_un;
@@ -40,7 +41,7 @@ namespace PamHandshake
   /**
    * Server that is listening on port or unix domain socket.
    */
-  class Server
+  class Server : public std::enable_shared_from_this<Server>
   {
   public:
     friend class Connection;
@@ -98,7 +99,7 @@ namespace PamHandshake
      * Start the server
      */
     void run();
-    void handle(Connection * conn);
+    void handle(std::shared_ptr<Connection> conn);
 
     std::string createSession();
 
@@ -119,6 +120,7 @@ namespace PamHandshake
                   const std::string & content);
     void response_not_found(Connection * conn,
                             const std::string & content);
+    void start_housekeeping();
   private:
     void init();
     void housekeeping();
@@ -142,7 +144,7 @@ namespace PamHandshake
     struct timeval readTimeout;
     struct timeval writeTimeout;
 
-    std::map<std::size_t, std::thread> connections;
+    std::set<std::size_t> connections;
     std::size_t maxConnections;
     std::size_t connectionTimeout;
     std::size_t sessionTimeout;

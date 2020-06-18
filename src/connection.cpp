@@ -4,12 +4,13 @@
 #include <sys/socket.h>
 #include <string.h>
 #include <stdlib.h>
+#include <iostream>
 
 using namespace PamHandshake;
 
 Connection::Connection(int _connfd,
                        std::size_t _connectionId,
-                       Server * _server)
+                       std::shared_ptr<Server> _server)
   : connfd(_connfd),
     connectionId(_connectionId),
     server(_server)
@@ -22,7 +23,7 @@ Connection::~Connection()
   close(connfd);
 }
 
-Server * Connection::getServer() const
+std::shared_ptr<Server> Connection::getServer() const
 {
   return server;
 }
@@ -43,6 +44,7 @@ int Connection::read(char * buff, size_t len)
   {
     char buff[64];
     strerror_r(rv, buff, 63);
+    std::cout << "select for read failed:" << buff << std::endl;
     throw std::runtime_error(buff);
   }
   else if(rv == 0)
@@ -66,6 +68,7 @@ void Connection::write(const char * buff, size_t len)
   {
     char buff[64];
     strerror_r(rv, buff, 63);
+    std::cout << "select for write failed:" << buff << std::endl;
     throw std::runtime_error(buff);
   }
   else if(rv == 0)
