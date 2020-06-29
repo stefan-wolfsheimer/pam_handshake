@@ -88,7 +88,6 @@ Server::Server(const InetAddr & inetaddr,
       std::cout << "socket successfully bound" << std::endl;
     }
   }
-  housekeeper = std::make_shared<std::thread>(std::bind(&Server::housekeeping, this));
 }
 
 Server::Server(const UnixDomainAddr & uda,
@@ -187,7 +186,6 @@ Server::Server(const UnixDomainAddr & uda,
       }
     }
   }
-  housekeeper = std::make_shared<std::thread>(std::bind(&Server::housekeeping, this));
 }
 
 Server::~Server()
@@ -234,35 +232,50 @@ void Server::init()
   }
 }
 
+void Server::start_housekeeping()
+{
+  auto self = shared_from_this();
+  self->housekeeper = std::make_shared<std::thread>([self](){
+      self->housekeeping();
+  });
+}
+
 void Server::housekeeping()
 {
   while(true)
   {
     std::this_thread::sleep_for(std::chrono::seconds(10));
     {
-      std::lock_guard<std::mutex> lock(mutex);
-      if(verbose)
+      std::vector<std::shared_ptr<Session>> to_be_canceled;
       {
-        std::cout << "housekeeping " << std::endl;
-      }
-      auto itr = sessions.begin();
-      while(itr != sessions.end())
-      {
-        auto next = itr;
-        next++;
-        if(std::difftime(std::time(nullptr), itr->second->getLastTime()) > sessionTimeout)
+        std::lock_guard<std::mutex> lock(mutex);
+        if(verbose)
         {
-          if(itr->second->getState() == Session::State::Error ||
-             itr->second->getState() == Session::State::Timeout)
-          {
-            // remove
-          }
-          else
-          {
-            itr->second->cancel();
-          }
+          std::cout << "housekeeping " << std::endl;
         }
-        itr = next;
+        auto itr = sessions.begin();
+        while(itr != sessions.end())
+        {
+          auto next = itr;
+          next++;
+          if(std::difftime(std::time(nullptr), itr->second->getLastTime()) > sessionTimeout)
+          {
+            if(itr->second->getState() == Session::State::Error ||
+               itr->second->getState() == Session::State::Timeout)
+            {
+              sessions.erase(itr);
+            }
+            else
+            {
+              to_be_canceled.push_back(itr->second);
+            }
+          }
+          itr = next;
+        }
+      }//mutex
+      for(auto s : to_be_canceled)
+      {
+        s->cancel();
       }
     }
   }
@@ -314,78 +327,98 @@ void Server::run()
     }
     if(connections.size() >= maxConnections)
     {
+      std::cout << "connection count exceeded " << connections.size() << ">=" <<  maxConnections << std::endl;
       shutdown(connfd, SHUT_RDWR);
       close(connfd);
     }
     else
     {
-      std::size_t connection_id = connections.empty() ? 0 : (connections.crbegin()->first + 1);
-      if(verbose)
+      std::size_t connection_id;
+      std::shared_ptr<Connection> conn;
       {
+        std::lock_guard<std::mutex> lock(mutex);
+        connection_id = connections.empty() ? 0 : (*connections.crbegin() + 1);
+        if(verbose)
         {
-          std::lock_guard<std::mutex> lock(mutex);
-          std::cout << "new connection " << connection_id << std::endl;
+          std::cout << "open connection " << connection_id << std::endl;
         }
+        conn = std::make_shared<Connection>(connfd, connection_id, shared_from_this());
+        connections.insert(connection_id);
       }
-      auto p = connections.insert(std::make_pair(connection_id,
-                                                 std::thread(std::bind(&Server::handle, this, std::placeholders::_1),
-                                                             new Connection(connfd, connection_id, this))));
-      p.first->second.detach();
-    }
-  }
-  for(auto & p : connections)
-  {
-    if(p.second.joinable())
-    {
-      p.second.join();
+      std::thread t(std::bind(&Server::handle,
+                              this,
+                              std::placeholders::_1),
+                    conn);
+      t.detach();
     }
   }
 }
 
 
-void Server::handle(Connection * conn)
+void Server::handle(std::shared_ptr<Connection> conn)
 {
-#define BUFFSIZE 1025
-  // @todo using static buffer (pooled connection)
-  char buff[BUFFSIZE]; 
   try
   {
-    std::size_t l = conn->read(buff, BUFFSIZE);
-    if(l >= BUFFSIZE)
+    auto header = std::make_shared<HttpHeader>();
+    char buff[256];
+    bool get_cotent = true;
+    int n;
+    while(!header->header_read())
     {
-      const char * msg = HttpHeader::response(413);
-      conn->write(msg, strlen(msg));
+      n = conn->read(buff, sizeof(buff)-1);
+      if(n < 0)
+      {
+        throw std::runtime_error("failed to read buffer");
+      }
+      if(n > 0)
+      {
+        header->parse_chunk(buff, n);
+      }
+      if(!header->header_read())
+      {
+        conn->write(HttpHeader::response(100));
+      }
+    }
+    if(!header->header_read())
+    {
+      throw std::runtime_error("failed to read HTTP header");
+    }
+    while(header->payload_size > header->content.size())
+    {
+      conn->write(HttpHeader::response(100));
+      n = conn->read(buff, sizeof(buff)-1);
+      if(n < 0)
+      {
+        throw std::runtime_error("failed to read buffer");
+      }
+      header->parse_chunk(buff, n);
+    }
+    if(verbose)
+    {
+      {
+        std::lock_guard<std::mutex> lock(mutex);
+        std::cout << *header << std::endl;
+      }
+    }
+    if(header->method == "POST")
+    {
+      post(conn.get(), header);
+    }
+    else if(header->method == "PUT")
+    {
+      put(conn.get(), header);
+    }
+    else if(header->method == "GET")
+    {
+      get(conn.get(), header);
+    }
+    else if(header->method == "DELETE")
+    {
+      deleteSession(conn.get(), header);
     }
     else
     {
-      auto header = std::make_shared<HttpHeader>(buff, l);
-      if(verbose)
-      {
-        {
-          std::lock_guard<std::mutex> lock(mutex);
-          std::cout << *header << std::endl;
-        }
-      }
-      if(header->method == "POST")
-      {
-        post(conn, header);
-      }
-      else if(header->method == "PUT")
-      {
-        put(conn, header);
-      }
-      else if(header->method == "GET")
-      {
-        get(conn, header);
-      }
-      else if(header->method == "DELETE")
-      {
-        deleteSession(conn, header);
-      }
-      else
-      {
-        conn->write(HttpHeader::response(405));
-      }
+      conn->write(HttpHeader::response(405));
     }
   }
   catch(ConnectionTimeout & ex)
@@ -411,15 +444,25 @@ void Server::handle(Connection * conn)
     {
       std::lock_guard<std::mutex> lock(mutex);
       std::cerr << ex.what() << std::endl;
+      try
+      {
+        conn->write(HttpHeader::response(504));
+      }
+      catch(std::exception & ex)
+      {
+        {
+          std::lock_guard<std::mutex> lock(mutex);
+          std::cerr << ex.what() << std::endl;
+        }
+      }
     }
   }
   std::size_t connectionId = conn->getConnectionId();
-  delete conn;
+  conn.reset();
   {
     std::lock_guard<std::mutex> lock(mutex);
     connections.erase(connectionId);
   }
-#undef BUFFSIZE
 }
 
 std::string Server::createSession()
@@ -437,14 +480,9 @@ void Server::post(Connection * conn,
                   std::shared_ptr<const HttpHeader> header)
 {
   std::string token(std::move(createSession()));
-#define BUFFSIZE 1025
-  // @todo using static buffer (pooled connection)
-  char buff[BUFFSIZE]; 
-  sprintf(buff, "%s%s",
-          HttpHeader::response(200),
-          token.c_str());
-  conn->write(buff);
-#undef BUFFSIZE
+  response(conn,
+           200,
+           token);
 }
 
 void Server::put(Connection * conn,
@@ -462,7 +500,8 @@ void Server::put(Connection * conn,
     auto itr = sessions.find(token);
     if(itr != sessions.end())
     {
-      auto p = itr->second->pull(header->content, header->payload_size);
+      auto p = itr->second->pull(header->content.c_str(),
+                                 header->content.size());
       int http_code = 200;
       if(p.first == Session::State::NotAuthenticated)
       {
@@ -476,19 +515,13 @@ void Server::put(Connection * conn,
       {
         http_code = 500;
       }
-      std::string msg(HttpHeader::response(http_code));
-      msg.append(Session::StateToString(p.first));
-      msg.append("\r\n");
-      msg.append(p.second);
-      conn->write(msg.c_str());
+      response(conn,
+               http_code,
+               std::string(Session::StateToString(p.first)) + "\r\n" + p.second);
     }
     else
     {
-      std::string msg(HttpHeader::response(404));
-      msg.append("NOT FOUND ");
-      msg += token;
-      msg.append("\r\n");
-      conn->write(msg.c_str());
+      response_not_found(conn, token);
     }
   }
 }
@@ -504,19 +537,14 @@ void Server::get(Connection * conn,
 
     if(itr != sessions.end())
     {
-      std::string msg(HttpHeader::response(200));
       itr->second->refresh();
-      msg.append(Session::StateToString(itr->second->getState()));
-      msg.append("\r\n");
-      conn->write(msg.c_str());
+      response(conn,
+               200,
+               std::string(Session::StateToString(itr->second->getState())) + "\r\n");
     }
     else
     {
-      std::string msg(HttpHeader::response(404));
-      msg.append("NOT FOUND ");
-      msg += token;
-      msg.append("\r\n");
-      conn->write(msg.c_str());
+      response_not_found(conn, token);
     }
   }
 }
@@ -533,21 +561,36 @@ void Server::deleteSession(Connection * conn,
     {
       itr->second->cancel();
       itr->second->refresh();
-      std::string msg(HttpHeader::response(200));
-      msg.append("DELETED ");
-      msg += token;
-      msg.append("\r\n");
-      conn->write(msg.c_str());
+      response(conn,
+               200,
+               std::string("DELETED ") + token + "\r\n");
     }
     else
     {
-      std::string msg(HttpHeader::response(404));
-      msg.append("NOT FOUND ");
-      msg += token;
-      msg.append("\r\n");
-      conn->write(msg.c_str());
+      response_not_found(conn, token);
     }
   }
+}
+
+void Server::response(Connection * conn,
+                      int code,
+                      const std::string & content)
+{
+  //@todo better boundary check
+  char buff[200];
+  snprintf(buff,
+           199,
+           HttpHeader::responseWithLength(code),
+           content.size());
+  conn->write(buff);
+  conn->write(content);
+}
+
+void Server::response_not_found(Connection * conn, const std::string & content)
+{
+  response(conn,
+           404,
+           std::string("NOT FOUND ") + content + "\r\n");
 }
 
 std::string Server::randomString(std::size_t len)

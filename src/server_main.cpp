@@ -223,6 +223,7 @@ int main(int argc, const char ** argv)
     {
       server->setConversationProgram(conversationProgram);
     }
+    server->start_housekeeping();
     server->run();
   }
   catch(const std::exception & ex)

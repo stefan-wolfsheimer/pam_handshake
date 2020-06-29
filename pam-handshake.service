@@ -1,9 +1,11 @@
+# use auth check bin because not all pam modules are thread safe:
+# set --conversation /usr/sbin/pam_handshake_auth_check
 [Unit]
 Description=PAM handshake service
 After=network.target
 
 [Service]
-ExecStart=/usr/sbin/pam_handshake_server --socket --addr /var/pam_handshake.socket --stack irods --chgrp irods
+ExecStart=/usr/sbin/pam_handshake_server --socket --addr /var/pam_handshake.socket --stack irods --conversation /usr/sbin/pam_handshake_auth_check --chgrp $( awk 'BEGIN{ FS="="; }{ if($1=="IRODS_SERVICE_GROUP_NAME") print $2; }' /etc/irods/service_account.config )
 Type=simple
 PIDFile=/var/pam_handshake.pid
 StandardOutput=file:/var/log/pam_handshake_server.log

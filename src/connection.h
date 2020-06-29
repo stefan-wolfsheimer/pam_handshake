@@ -1,6 +1,8 @@
 #pragma once
+#include <memory>
 #include <exception>
 #include <stdexcept>
+#include <sys/poll.h>
 
 namespace PamHandshake
 {
@@ -14,12 +16,12 @@ namespace PamHandshake
   class Connection
   {
   public:
-    Connection(int _connfd, std::size_t _connectionId, Server * _server);
+    Connection(int _connfd, std::size_t _connectionId,
+               std::shared_ptr<Server> _server);
     ~Connection();
-    Server * getServer() const;
+    std::shared_ptr<Server> getServer() const;
     std::size_t getConnectionId() const;
-
-    std::size_t read(char * buff, size_t len);
+    int read(char * buff, size_t len);
     void write(const char * buff, size_t len);
     void write(const std::string & buff);
 
@@ -32,6 +34,6 @@ namespace PamHandshake
   private:
     int connfd;
     std::size_t connectionId;
-    Server * server;
+    std::shared_ptr<Server> server;
   };
 }

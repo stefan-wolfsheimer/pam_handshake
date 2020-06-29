@@ -1,6 +1,6 @@
 Name:           %{packagename}
 Version:        %{version}
-Release:        1%{?dist}
+Release:        %{release}
 Summary:        Integration of iRODS and handle system via microservices.
 
 License:        GPLv3+
@@ -39,6 +39,10 @@ install -m 755 pam_handshake_auth_check %{buildroot}/usr/sbin
 install -m 755 pam_handshake_start.sh %{buildroot}/usr/sbin
 install -m 755 pam_handshake_status.sh %{buildroot}/usr/sbin
 install -m 755 pam_handshake_stop.sh %{buildroot}/usr/sbin
+install -m 755 pam_handshake_delete.sh %{buildroot}/usr/sbin
+install -m 755 pam_handshake_post.sh %{buildroot}/usr/sbin
+install -m 755 pam_handshake_get.sh %{buildroot}/usr/sbin
+install -m 755 pam_handshake_put.sh %{buildroot}/usr/sbin
 install -m 755 pam-handshake.service %{buildroot}/etc/systemd/system/
 
 %files
@@ -47,6 +51,10 @@ install -m 755 pam-handshake.service %{buildroot}/etc/systemd/system/
 /usr/sbin/pam_handshake_start.sh
 /usr/sbin/pam_handshake_status.sh
 /usr/sbin/pam_handshake_stop.sh
+/usr/sbin/pam_handshake_delete.sh
+/usr/sbin/pam_handshake_post.sh
+/usr/sbin/pam_handshake_get.sh
+/usr/sbin/pam_handshake_put.sh
 /etc/systemd/system/pam-handshake.service
 
 %post
